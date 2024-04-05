@@ -10,6 +10,8 @@
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
 
   <depend>PcapPlusPlus</depend>
+  <depend>PCL</depend>
+  <depend>geometry_msgs</depend>
 
   <test_depend>ament_cmake_gtest</test_depend>
   <test_depend>ament_lint_auto</test_depend>
