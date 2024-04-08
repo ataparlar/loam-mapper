@@ -5,10 +5,10 @@
 #include <numeric>
 #include <execution>
 #include "loam_mapper/utils.hpp"
+#include "loam_mapper/Occtree.h"
 #include "pcapplusplus/PcapFileDevice.h"
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
-#include <boost/range/iterator_range.hpp>
 
 namespace loam_mapper
 {

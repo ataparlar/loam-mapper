@@ -27,6 +27,7 @@ set(LOAM_MAPPER_LIB_HEADERS
         include/loam_mapper/utils.hpp
         include/loam_mapper/date.h
         include/loam_mapper/csv.hpp
+        include/loam_mapper/Occtree.h
         include/loam_mapper/points_provider.hpp
         include/loam_mapper/transform_provider.hpp
         include/loam_mapper/loam_mapper.hpp)
