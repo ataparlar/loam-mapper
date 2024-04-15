@@ -187,11 +187,11 @@ TransformProvider::TransformProvider(const boost::filesystem::path & pose_txt)
       pose.pose_with_covariance.pose.position.set__x(in.easting-origin_x);
       pose.pose_with_covariance.pose.position.set__y(in.northing-origin_y);
       pose.pose_with_covariance.pose.position.set__z(in.ellipsoid_height-origin_z);
-      Eigen::AngleAxisd angle_axis_x(utils::Utils::deg_to_rad(in.roll), Eigen::Vector3d::UnitY());
-      Eigen::AngleAxisd angle_axis_y(utils::Utils::deg_to_rad(in.pitch), Eigen::Vector3d::UnitX());
+      Eigen::AngleAxisd angle_axis_x(utils::Utils::deg_to_rad(in.pitch), Eigen::Vector3d::UnitY());
+      Eigen::AngleAxisd angle_axis_y(utils::Utils::deg_to_rad(-in.roll), Eigen::Vector3d::UnitX());
       Eigen::AngleAxisd angle_axis_z(utils::Utils::deg_to_rad(-in.heading-90), Eigen::Vector3d::UnitZ());
 
-      Eigen::Quaterniond q = (angle_axis_x * angle_axis_y * angle_axis_z);
+      Eigen::Quaterniond q = (angle_axis_z  * angle_axis_y * angle_axis_x);
       pose.pose_with_covariance.pose.orientation.set__x(q.x());
       pose.pose_with_covariance.pose.orientation.set__y(q.y());
       pose.pose_with_covariance.pose.orientation.set__z(q.z());

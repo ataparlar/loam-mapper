@@ -9,6 +9,7 @@
 #include "pcapplusplus/PcapFileDevice.h"
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
+#include "loam_mapper/Occtree.h"
 
 namespace loam_mapper
 {
@@ -87,17 +88,22 @@ LoamMapper::LoamMapper(const loam_mapper::TransformProvider::ConstSharedPtr & tr
       point_cloud_name += "ytu_campus_" + std::to_string(i) + ".pcd";
 
 
-      pcl::PointCloud<pcl::PointXYZI> new_cloud;
+      Occtree occ_cloud(0.4);
       for (auto & point : cloud_trans) {
         pcl::PointXYZI pcl_point;
         pcl_point.x = point.x;
         pcl_point.y = point.y;
         pcl_point.z = point.z;
         pcl_point.intensity = point.intensity;
-        new_cloud.push_back(pcl_point);
+        occ_cloud.addPointIfVoxelEmpty(pcl_point);
       }
-      pcl::io::savePCDFileASCII(point_cloud_name, new_cloud);
 
+      pcl::PointCloud<pcl::PointXYZI> new_cloud;
+      for (auto & point : *occ_cloud.cloud) {
+        new_cloud.push_back(point);
+      }
+
+      pcl::io::savePCDFileASCII(point_cloud_name, new_cloud);
     };
 
 

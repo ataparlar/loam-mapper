@@ -8,7 +8,7 @@
 
 class Occtree {
 private:
-    typedef pcl::PointXYZRGBNormal PointType;
+    typedef pcl::PointXYZI PointType;
     typedef pcl::PointCloud<PointType> CloudType;
     typedef pcl::PointCloud<PointType>::Ptr CloudPtrType;
     typedef CloudType::ConstPtr CloudConstPtrType;
