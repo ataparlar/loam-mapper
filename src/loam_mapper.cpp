@@ -52,17 +52,28 @@ LoamMapper::LoamMapper(const loam_mapper::TransformProvider::ConstSharedPtr & tr
             pose.pose_with_covariance.pose.orientation.z);
           Eigen::Affine3d affine_imu2lidar(Eigen::Affine3d::Identity());
           affine_imu2lidar.matrix().topLeftCorner<3, 3>() =
-            Eigen::AngleAxisd(utils::Utils::deg_to_rad(179.59), Eigen::Vector3d::UnitZ())
+            Eigen::AngleAxisd(utils::Utils::deg_to_rad(0.675), Eigen::Vector3d::UnitZ())
               .toRotationMatrix() *
-            Eigen::AngleAxisd(utils::Utils::deg_to_rad(-0.42), Eigen::Vector3d::UnitY())
+            Eigen::AngleAxisd(utils::Utils::deg_to_rad(-0.44), Eigen::Vector3d::UnitY())
               .toRotationMatrix() *
-            Eigen::AngleAxisd(utils::Utils::deg_to_rad(0.39), Eigen::Vector3d::UnitX())
+            Eigen::AngleAxisd(utils::Utils::deg_to_rad(179.623), Eigen::Vector3d::UnitX())
               .toRotationMatrix();
+
+          Eigen::Affine3d ned2enu(Eigen::Affine3d::Identity());
+          ned2enu.matrix().topLeftCorner<3, 3>() =
+            Eigen::AngleAxisd(utils::Utils::deg_to_rad(-90.0), Eigen::Vector3d::UnitZ())
+              .toRotationMatrix() *
+            Eigen::AngleAxisd(utils::Utils::deg_to_rad(0.0), Eigen::Vector3d::UnitY())
+              .toRotationMatrix() *
+            Eigen::AngleAxisd(utils::Utils::deg_to_rad(180.0), Eigen::Vector3d::UnitX())
+              .toRotationMatrix();
+
+          Eigen::Affine3d affine_imu2lidar_enu(Eigen::Affine3d::Identity());
+          affine_imu2lidar_enu = affine_imu2lidar.matrix() * ned2enu.matrix();
 
           // sensor to map rotation is created to add translations and get the right rotation.
           Eigen::Affine3d affine_sensor2map(Eigen::Affine3d::Identity());
-
-          affine_sensor2map.matrix().topLeftCorner<3, 3>() = quat_ins_to_map.toRotationMatrix() * affine_imu2lidar.rotation().inverse();
+          affine_sensor2map.matrix().topLeftCorner<3, 3>() = quat_ins_to_map.toRotationMatrix() * affine_imu2lidar_enu.rotation();
 
           // pose is added to the transformation matrix. - these were completed for every point in the pointclouds.
           affine_sensor2map.matrix().topRightCorner<3, 1>() << pose.pose_with_covariance.pose.position.x,
@@ -88,7 +99,7 @@ LoamMapper::LoamMapper(const loam_mapper::TransformProvider::ConstSharedPtr & tr
       point_cloud_name += "ytu_campus_" + std::to_string(i) + ".pcd";
 
 
-      Occtree occ_cloud(0.4);
+      Occtree occ_cloud(0.1);
       for (auto & point : cloud_trans) {
         pcl::PointXYZI pcl_point;
         pcl_point.x = point.x;

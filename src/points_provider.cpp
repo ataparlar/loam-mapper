@@ -13,7 +13,7 @@
 
 namespace loam_mapper
 {
-PointsProvider::PointsProvider(const boost::filesystem::path& pcap_dir)
+PointsProvider::PointsProvider(const boost::filesystem::path & pcap_dir)
 {
   map_byte_to_return_mode_.insert(std::make_pair(55, ReturnMode::Strongest));
   map_byte_to_return_mode_.insert(std::make_pair(56, ReturnMode::LastReturn));
@@ -56,7 +56,6 @@ PointsProvider::PointsProvider(const boost::filesystem::path& pcap_dir)
   ind_block_to_first_channel_.resize(12);
   std::fill(ind_block_to_first_channel_.begin(), ind_block_to_first_channel_.end(), 0);
 
-
   for (const auto & path_pcap :
        boost::make_iterator_range(boost::filesystem::directory_iterator(pcap_dir))) {
     if (boost::filesystem::is_directory(path_pcap.path())) {
@@ -79,8 +78,7 @@ PointsProvider::PointsProvider(const boost::filesystem::path& pcap_dir)
   }
 }
 
-
-void PointsProvider::process_pcaps(const std::vector<boost::filesystem::path>& paths_pcaps)
+void PointsProvider::process_pcaps(const std::vector<boost::filesystem::path> & paths_pcaps)
 {
   for (const auto & pcap_path : paths_pcaps_) {
     //    pcpp::IFileReaderDevice * reader = pcpp::IFileReaderDevice::getReader(
@@ -90,7 +88,6 @@ void PointsProvider::process_pcaps(const std::vector<boost::filesystem::path>& p
     process_pcap(pcap_path);
   }
 }
-
 
 void PointsProvider::process_pcap(const boost::filesystem::path & pcap_path)
 {
@@ -156,10 +153,7 @@ void PointsProvider::process_packet(const pcpp::RawPacket & rawPacket)
       break;
     }
     case 1248: {
-
       pcl::PointCloud<pcl::PointXYZI> pcl_cloud;
-
-
 
       if (!has_received_valid_position_package_) {
         // Ignore until first valid Position Packet is received
@@ -298,14 +292,12 @@ void PointsProvider::process_packet(const pcpp::RawPacket & rawPacket)
           point.stamp_nanoseconds =
             std::chrono::nanoseconds(microseconds_since_toh.subseconds()).count();
 
-          //            if (
-          //              std::sqrt(std::pow(point.x, 2) + std::pow(point.y, 2) + std::pow(point.z,
-          //              2)) < min_point_distance_from_lidar) { continue;
-          //            }
-          //            if (
-          //              std::sqrt(std::pow(point.x, 2) + std::pow(point.y, 2) + std::pow(point.z,
-          //              2)) > max_point_distance_from_lidar) { continue;
-          //            }
+          if (std::sqrt(std::pow(point.x, 2) + std::pow(point.y, 2) + std::pow(point.z, 2)) < 2.0) {
+            continue;
+          } else if (
+            std::sqrt(std::pow(point.x, 2) + std::pow(point.y, 2) + std::pow(point.z, 2)) > 60) {
+            continue;
+          }
 
           cloud_.push_back(point);
         }
