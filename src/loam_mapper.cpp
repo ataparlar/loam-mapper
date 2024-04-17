@@ -1,49 +1,61 @@
-
 #include "loam_mapper/loam_mapper.hpp"
 
+#include "loam_mapper/Occtree.h"
+#include "loam_mapper/point_types.hpp"
+#include "loam_mapper/utils.hpp"
+#include "pcapplusplus/PcapFileDevice.h"
+
+#include <pcl/io/pcd_io.h>
+
+#include <execution>
 #include <iostream>
 #include <numeric>
-#include <execution>
-#include "loam_mapper/utils.hpp"
-#include "loam_mapper/Occtree.h"
-#include "pcapplusplus/PcapFileDevice.h"
-#include <pcl/io/pcd_io.h>
-#include <pcl/point_types.h>
-#include "loam_mapper/Occtree.h"
 
 namespace loam_mapper
 {
-LoamMapper::LoamMapper(const loam_mapper::TransformProvider::ConstSharedPtr & transform_provider,
-                       const loam_mapper::PointsProvider::ConstSharedPtr & points_provider)
+LoamMapper::LoamMapper(
+  const loam_mapper::TransformProvider::ConstSharedPtr & transform_provider,
+  const loam_mapper::PointsProvider::ConstSharedPtr & points_provider)
+: Node("loam_mapper")
 {
-
   // params
-  double imu2lidar_roll;
-  double imu2lidar_pitch;
-  double imu2lidar_yaw;
+  this->declare_parameter("pcap_dir_path", "");
+  this->declare_parameter("pose_txt_path", "");
+  this->declare_parameter("pcd_export_directory", "");
+  this->declare_parameter("map_origin_x", 0.0);
+  this->declare_parameter("map_origin_y", 0.0);
+  this->declare_parameter("map_origin_z", 0.0);
+  this->declare_parameter("imu2lidar_roll", 0.0);
+  this->declare_parameter("imu2lidar_pitch", 0.0);
+  this->declare_parameter("imu2lidar_yaw", 0.0);
+  this->declare_parameter("enable_ned2enu", 0.0);
 
+  pcap_dir_path_ = this->get_parameter("pcap_dir_path").as_string();
+  pose_txt_path_ = this->get_parameter("pose_txt_path").as_string();
+  pcd_export_dir_ = this->get_parameter("las_export_directory").as_string();
+  map_origin_x_ = this->get_parameter("map_origin_x").as_double();
+  map_origin_y_ = this->get_parameter("map_origin_y").as_double();
+  map_origin_z_ = this->get_parameter("map_origin_z").as_double();
+  imu2lidar_roll_ = this->get_parameter("imu2lidar_roll").as_double();
+  imu2lidar_pitch_ = this->get_parameter("imu2lidar_pitch").as_double();
+  imu2lidar_yaw_ = this->get_parameter("imu2lidar_yaw").as_double();
+  enable_ned2enu_ = this->get_parameter("enable_ned2enu").as_bool();
 
-  for (int i = 0; i < points_provider->paths_pcaps_.size(); i++)
-  {
-
+  for (int i = 0; i < points_provider->paths_pcaps_.size(); i++) {
     points_provider->process_pcap(points_provider->paths_pcaps_.at(i));
 
-    auto process_cloud_single = [&](const std::vector<PointsProvider::PointXYZIT> cloud)
-    {
+    auto process_cloud_single = [&](const std::vector<PointsProvider::PointXYZIT> & cloud) {
       std::vector<PointsProvider::PointXYZIT> cloud_trans;
       cloud_trans.resize(cloud.size());
 
-
       std::transform(
-        std::execution::par,
-        cloud.cbegin(),
-        cloud.cend(),
-        cloud_trans.begin(),
+        std::execution::par, cloud.cbegin(), cloud.cend(), cloud_trans.begin(),
         [this, &transform_provider](const PointsProvider::PointXYZIT & point) {
           PointsProvider::PointXYZIT point_trans;
 
           // position from applanix data is taken into pose below according to the stamps .
-          TransformProvider::Pose pose = transform_provider->get_pose_at(point.stamp_unix_seconds, point.stamp_nanoseconds);
+          TransformProvider::Pose pose =
+            transform_provider->get_pose_at(point.stamp_unix_seconds, point.stamp_nanoseconds);
 
           Eigen::Quaterniond quat_ins_to_map(
             pose.pose_with_covariance.pose.orientation.w,
@@ -73,17 +85,17 @@ LoamMapper::LoamMapper(const loam_mapper::TransformProvider::ConstSharedPtr & tr
 
           // sensor to map rotation is created to add translations and get the right rotation.
           Eigen::Affine3d affine_sensor2map(Eigen::Affine3d::Identity());
-          affine_sensor2map.matrix().topLeftCorner<3, 3>() = quat_ins_to_map.toRotationMatrix() * affine_imu2lidar_enu.rotation();
+          affine_sensor2map.matrix().topLeftCorner<3, 3>() =
+            quat_ins_to_map.toRotationMatrix() * affine_imu2lidar_enu.rotation();
 
-          // pose is added to the transformation matrix. - these were completed for every point in the pointclouds.
-          affine_sensor2map.matrix().topRightCorner<3, 1>() << pose.pose_with_covariance.pose.position.x,
-                pose.pose_with_covariance.pose.position.y, pose.pose_with_covariance.pose.position.z;
+          // pose is added to the transformation matrix. - these were completed for every point in
+          // the pointclouds.
+          affine_sensor2map.matrix().topRightCorner<3, 1>()
+            << pose.pose_with_covariance.pose.position.x,
+            pose.pose_with_covariance.pose.position.y, pose.pose_with_covariance.pose.position.z;
 
           // get the point's position w.r.t. the point cloud origin.
-          Eigen::Vector4d vec_point_in_first(point.x,
-                                             point.y,
-                                             point.z,
-                                             1.0);
+          Eigen::Vector4d vec_point_in_first(point.x, point.y, point.z, 1.0);
           // create a 3D vector for transformed point to the map position and rotation.
           Eigen::Vector4d vec_point_trans = affine_sensor2map.matrix() * vec_point_in_first;
 
@@ -95,13 +107,13 @@ LoamMapper::LoamMapper(const loam_mapper::TransformProvider::ConstSharedPtr & tr
           return point_trans;
         });
 
-      std::string point_cloud_name = "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/output/";
+      std::string point_cloud_name =
+        "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/output/";
       point_cloud_name += "ytu_campus_" + std::to_string(i) + ".pcd";
 
-
-      Occtree occ_cloud(0.1);
+      Occtree occ_cloud(0.4);
       for (auto & point : cloud_trans) {
-        pcl::PointXYZI pcl_point;
+        PointType pcl_point;
         pcl_point.x = point.x;
         pcl_point.y = point.y;
         pcl_point.z = point.z;
@@ -109,7 +121,7 @@ LoamMapper::LoamMapper(const loam_mapper::TransformProvider::ConstSharedPtr & tr
         occ_cloud.addPointIfVoxelEmpty(pcl_point);
       }
 
-      pcl::PointCloud<pcl::PointXYZI> new_cloud;
+      CloudType new_cloud;
       for (auto & point : *occ_cloud.cloud) {
         new_cloud.push_back(point);
       }
@@ -117,29 +129,27 @@ LoamMapper::LoamMapper(const loam_mapper::TransformProvider::ConstSharedPtr & tr
       pcl::io::savePCDFileASCII(point_cloud_name, new_cloud);
     };
 
-
     process_cloud_single(points_provider->cloud_);
 
     points_provider->cloud_.clear();
   }
-
-
 }
-
-
-
-
 
 }  // namespace loam_mapper
 
-int main()
+int main(int argc, char * argv[])
 {
-  boost::filesystem::path pose_path("/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/ytu_campus_080423_ground_truth.txt");
-  boost::filesystem::path pcap_path("/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/pcaps/");
+  boost::filesystem::path pose_path(
+    "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/"
+    "ytu_campus_080423_ground_truth.txt");
+  boost::filesystem::path pcap_path(
+    "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/pcaps/");
   auto transform_provider = std::make_shared<loam_mapper::TransformProvider>(pose_path);
   auto points_provider = std::make_shared<loam_mapper::PointsProvider>(pcap_path);
 
-  loam_mapper::LoamMapper(transform_provider, points_provider);
+  rclcpp::init(argc, argv);
+  rclcpp::spin(std::make_shared<loam_mapper::LoamMapper>(transform_provider, points_provider));
+  rclcpp::shutdown();
 
   return 0;
 }
