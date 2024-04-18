@@ -1,11 +1,10 @@
 #include "loam_mapper/date.h"
-#include "loam_mapper/transform_provider.hpp"
 #include "loam_mapper/points_provider.hpp"
-
+#include "loam_mapper/transform_provider.hpp"
 #include "rclcpp/rclcpp.hpp"
 
-#include <boost/math/special_functions/relative_difference.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/math/special_functions/relative_difference.hpp>
 
 #include <pcapplusplus/RawPacket.h>
 
@@ -19,13 +18,11 @@ namespace loam_mapper
 class LoamMapper : public rclcpp::Node
 {
 public:
-
-  explicit LoamMapper(const loam_mapper::TransformProvider::ConstSharedPtr & transform_provider,
-                      const loam_mapper::PointsProvider::ConstSharedPtr & points_provider);
+  explicit LoamMapper();
 
   // Params
   std::string pcap_dir_path_;
-  static std::string pose_txt_path_;
+  std::string pose_txt_path_;
   std::string pcd_export_dir_;
 
   double map_origin_x_;
@@ -37,8 +34,9 @@ public:
   double imu2lidar_yaw_;
   bool enable_ned2enu_;
 
+  TransformProvider::SharedPtr transform_provider;
+  PointsProvider::SharedPtr points_provider;
+
 private:
-
-
 };
 }  // namespace loam_mapper
