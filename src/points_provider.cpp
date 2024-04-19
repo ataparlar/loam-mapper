@@ -106,8 +106,9 @@ void PointsProvider::process_pcap(const boost::filesystem::path & pcap_path)
   reader->close();
 }
 
-void PointsProvider::process_packet(const pcpp::RawPacket & rawPacket)
+std::vector<PointsProvider::PointXYZIT> PointsProvider::process_packet(const pcpp::RawPacket & rawPacket)
 {
+  std::vector<PointsProvider::PointXYZIT> packet_cloud;
   switch (rawPacket.getFrameLength()) {
     case 554: {
       if (has_received_valid_position_package_) {
@@ -295,11 +296,12 @@ void PointsProvider::process_packet(const pcpp::RawPacket & rawPacket)
           }
 
           cloud_.push_back(point);
-          instant_cloud_.push_back(point);
+          packet_cloud.push_back(point);
         }
       }
     }
   }
+  return packet_cloud;
 }
 
 }  // namespace loam_mapper

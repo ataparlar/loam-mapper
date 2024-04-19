@@ -143,6 +143,8 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
       if (debug_mode_) {
         sensor_msgs::msg::PointCloud2 ros_cloud;
         pcl::toROSMsg(new_cloud, ros_cloud);
+        ros_cloud.header.frame_id = "map";
+        ros_cloud.header.stamp = this->get_clock()->now();
         ros_cloud_pub->publish(ros_cloud);
       } else {
         pcl::io::savePCDFileASCII(point_cloud_name, new_cloud);
@@ -163,12 +165,12 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
 
     pcpp::RawPacket rawPacket;
     while (reader->getNextPacket(rawPacket)) {
-      points_provider->instant_cloud_.clear();
-      points_provider->process_packet(rawPacket);
-      process_cloud_single(points_provider->instant_cloud_);
+      auto packet_cloud = points_provider->process_packet(rawPacket);
+//      process_cloud_single(packet_cloud);
     }
 
     reader->close();
+    process_cloud_single(points_provider->cloud_);
     points_provider->cloud_.clear();
   }
 }

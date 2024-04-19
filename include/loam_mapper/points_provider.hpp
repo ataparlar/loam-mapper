@@ -52,11 +52,10 @@ public:
     }
   } __attribute__((packed));
 
-  std::vector<PointXYZIT> instant_cloud_;
   std::vector<PointXYZIT> cloud_;
 
   void process_pcap(const boost::filesystem::path & pcap_path);
-  void process_packet(const pcpp::RawPacket & rawPacket);
+  std::vector<PointsProvider::PointXYZIT> process_packet(const pcpp::RawPacket & rawPacket);
 
 private:
 
