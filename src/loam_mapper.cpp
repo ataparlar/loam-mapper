@@ -26,6 +26,7 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   this->declare_parameter("imu2lidar_pitch", 0.0);
   this->declare_parameter("imu2lidar_yaw", 0.0);
   this->declare_parameter("enable_ned2enu", true);
+  this->declare_parameter("voxel_resolution", 0.4);
 
   pcap_dir_path_ = this->get_parameter("pcap_dir_path").as_string();
   pose_txt_path_ = this->get_parameter("pose_txt_path").as_string();
@@ -37,6 +38,7 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   imu2lidar_pitch_ = this->get_parameter("imu2lidar_pitch").as_double();
   imu2lidar_yaw_ = this->get_parameter("imu2lidar_yaw").as_double();
   enable_ned2enu_ = this->get_parameter("enable_ned2enu").as_bool();
+  voxel_resolution_ = this->get_parameter("voxel_resolution").as_double();
 
   transform_provider = std::make_shared<loam_mapper::TransformProvider>(
     pose_txt_path_, map_origin_x_, map_origin_y_, map_origin_z_);
@@ -65,11 +67,11 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
             pose.pose_with_covariance.pose.orientation.z);
           Eigen::Affine3d affine_imu2lidar(Eigen::Affine3d::Identity());
           affine_imu2lidar.matrix().topLeftCorner<3, 3>() =
-            Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_roll_), Eigen::Vector3d::UnitZ())
+            Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_yaw_), Eigen::Vector3d::UnitZ())
               .toRotationMatrix() *
             Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_pitch_), Eigen::Vector3d::UnitY())
               .toRotationMatrix() *
-            Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_yaw_), Eigen::Vector3d::UnitX())
+            Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_roll_), Eigen::Vector3d::UnitX())
               .toRotationMatrix();
 
           Eigen::Affine3d affine_sensor2map(Eigen::Affine3d::Identity());
@@ -117,7 +119,7 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
 
       std::string point_cloud_name = pcd_export_dir_ + "ytu_campus_" + std::to_string(i) + ".pcd";
 
-      Occtree occ_cloud(0.4);
+      Occtree occ_cloud(voxel_resolution_);
       for (auto & point : cloud_trans) {
         PointType pcl_point;
         pcl_point.x = point.x;

@@ -13,3 +13,5 @@
     imu2lidar_yaw: 0.675
 
     enable_ned2enu: true
+
+    voxel_resolution: 0.2

@@ -32,7 +32,10 @@ public:
   double imu2lidar_roll_;
   double imu2lidar_pitch_;
   double imu2lidar_yaw_;
+
   bool enable_ned2enu_;
+
+  double voxel_resolution_;
 
   TransformProvider::SharedPtr transform_provider;
   PointsProvider::SharedPtr points_provider;
