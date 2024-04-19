@@ -11,6 +11,9 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(PcapPlusPlus REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(pcl_conversions REQUIRED)
 find_package(PCL REQUIRED)
 
 include_directories(include
@@ -36,7 +39,7 @@ set(LOAM_MAPPER_LIB_HEADERS
 add_executable(${PROJECT_NAME}
         ${LOAM_MAPPER_LIB_SRC}
         ${LOAM_MAPPER_LIB_HEADERS})
-ament_target_dependencies(${PROJECT_NAME} rclcpp PcapPlusPlus PCL geometry_msgs)
+ament_target_dependencies(${PROJECT_NAME} rclcpp PcapPlusPlus PCL pcl_conversions geometry_msgs sensor_msgs nav_msgs)
 target_link_libraries(${PROJECT_NAME}
         ${PCL_LIBRARIES}
         ${PcapPlusPlus_LIBRARIES})

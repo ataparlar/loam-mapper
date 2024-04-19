@@ -210,4 +210,20 @@ TransformProvider::Pose TransformProvider::get_pose_at(
   return poses_.at(index);
 }
 
+geometry_msgs::msg::PoseStamped TransformProvider::convert_to_ros_pose(TransformProvider::Pose pose) {
+  geometry_msgs::msg::PoseStamped ros_pose;
+  ros_pose.header.frame_id = "map";
+  ros_pose.header.stamp.sec = pose.stamp_unix_seconds;
+  ros_pose.header.stamp.nanosec = pose.stamp_nanoseconds;
+  ros_pose.pose.position.set__x(pose.pose_with_covariance.pose.position.x);
+  ros_pose.pose.position.set__y(pose.pose_with_covariance.pose.position.y);
+  ros_pose.pose.position.set__z(pose.pose_with_covariance.pose.position.z);
+  ros_pose.pose.orientation.set__x(pose.pose_with_covariance.pose.orientation.x);
+  ros_pose.pose.orientation.set__y(pose.pose_with_covariance.pose.orientation.y);
+  ros_pose.pose.orientation.set__z(pose.pose_with_covariance.pose.orientation.z);
+  ros_pose.pose.orientation.set__w(pose.pose_with_covariance.pose.orientation.w);
+
+  return ros_pose;
+}
+
 }  // namespace loam_mapper

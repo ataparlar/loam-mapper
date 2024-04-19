@@ -5,6 +5,7 @@
 #include "loam_mapper/csv.hpp"
 
 #include <geometry_msgs/msg/pose_with_covariance.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 
 #include <boost/filesystem.hpp>
 
@@ -36,6 +37,7 @@ public:
   std::vector<Pose> poses_;
 
   Pose get_pose_at(uint32_t stamp_unix_seconds, uint32_t stamp_nanoseconds);
+  geometry_msgs::msg::PoseStamped convert_to_ros_pose(Pose pose);
 
 private:
   std::string header_line_string;

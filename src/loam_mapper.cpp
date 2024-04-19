@@ -6,6 +6,7 @@
 #include "pcapplusplus/PcapFileDevice.h"
 
 #include <pcl/io/pcd_io.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 #include <execution>
 #include <iostream>
@@ -27,6 +28,7 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   this->declare_parameter("imu2lidar_yaw", 0.0);
   this->declare_parameter("enable_ned2enu", true);
   this->declare_parameter("voxel_resolution", 0.4);
+  this->declare_parameter("debug_mode", true);
 
   pcap_dir_path_ = this->get_parameter("pcap_dir_path").as_string();
   pose_txt_path_ = this->get_parameter("pose_txt_path").as_string();
@@ -39,14 +41,18 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   imu2lidar_yaw_ = this->get_parameter("imu2lidar_yaw").as_double();
   enable_ned2enu_ = this->get_parameter("enable_ned2enu").as_bool();
   voxel_resolution_ = this->get_parameter("voxel_resolution").as_double();
+  debug_mode_ = this->get_parameter("debug_mode").as_bool();
+
+  if (debug_mode_) {
+    ros_cloud_pub = this->create_publisher<sensor_msgs::msg::PointCloud2>("parsed_cloud", 10);
+    path_pub = this->create_publisher<nav_msgs::msg::Path>("ground_truth_path", 10);
+  }
 
   transform_provider = std::make_shared<loam_mapper::TransformProvider>(
     pose_txt_path_, map_origin_x_, map_origin_y_, map_origin_z_);
   points_provider = std::make_shared<loam_mapper::PointsProvider>(pcap_dir_path_);
 
   for (int i = 0; i < points_provider->paths_pcaps_.size(); i++) {
-    points_provider->process_pcap(points_provider->paths_pcaps_.at(i));
-
     auto process_cloud_single = [&](const std::vector<PointsProvider::PointXYZIT> & cloud) {
       std::vector<PointsProvider::PointXYZIT> cloud_trans;
       cloud_trans.resize(cloud.size());
@@ -134,11 +140,35 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
         new_cloud.push_back(point);
       }
 
-      pcl::io::savePCDFileASCII(point_cloud_name, new_cloud);
+      if (debug_mode_) {
+        sensor_msgs::msg::PointCloud2 ros_cloud;
+        pcl::toROSMsg(new_cloud, ros_cloud);
+        ros_cloud_pub->publish(ros_cloud);
+      } else {
+        pcl::io::savePCDFileASCII(point_cloud_name, new_cloud);
+      }
     };
 
-    process_cloud_single(points_provider->cloud_);
+//    points_provider->process_pcap(points_provider->paths_pcaps_.at(i));
 
+    pcpp::IFileReaderDevice * reader = pcpp::IFileReaderDevice::getReader(points_provider->paths_pcaps_.at(i).string());
+    if (reader == nullptr) {
+      printf("Cannot determine reader for file type\n");
+      exit(1);
+    }
+    if (!reader->open()) {
+      printf("Cannot open input.pcap for reading\n");
+      exit(1);
+    }
+
+    pcpp::RawPacket rawPacket;
+    while (reader->getNextPacket(rawPacket)) {
+      points_provider->instant_cloud_.clear();
+      points_provider->process_packet(rawPacket);
+      process_cloud_single(points_provider->instant_cloud_);
+    }
+
+    reader->close();
     points_provider->cloud_.clear();
   }
 }

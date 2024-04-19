@@ -6,6 +6,9 @@
 #include <boost/filesystem.hpp>
 #include <boost/math/special_functions/relative_difference.hpp>
 
+#include "sensor_msgs/msg/point_cloud2.hpp"
+#include "nav_msgs/msg/path.hpp"
+
 #include <pcapplusplus/RawPacket.h>
 
 #include <cstdint>
@@ -34,11 +37,14 @@ public:
   double imu2lidar_yaw_;
 
   bool enable_ned2enu_;
-
   double voxel_resolution_;
+  bool debug_mode_;
 
   TransformProvider::SharedPtr transform_provider;
   PointsProvider::SharedPtr points_provider;
+
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr ros_cloud_pub;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub;
 
 private:
 };

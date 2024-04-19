@@ -5,9 +5,6 @@
 
 #include <boost/range/iterator_range.hpp>
 
-#include <pcl/io/pcd_io.h>
-#include <pcl/point_types.h>
-
 #include <iostream>
 #include <numeric>
 
@@ -153,8 +150,6 @@ void PointsProvider::process_packet(const pcpp::RawPacket & rawPacket)
       break;
     }
     case 1248: {
-      pcl::PointCloud<pcl::PointXYZI> pcl_cloud;
-
       if (!has_received_valid_position_package_) {
         // Ignore until first valid Position Packet is received
         break;
@@ -300,6 +295,7 @@ void PointsProvider::process_packet(const pcpp::RawPacket & rawPacket)
           }
 
           cloud_.push_back(point);
+          instant_cloud_.push_back(point);
         }
       }
     }
