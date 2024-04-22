@@ -5,14 +5,10 @@
 
 #include <vector>
 #include <pcl/octree/octree_search.h>
+#include "loam_mapper/point_types.hpp"
 
 class Occtree {
 private:
-    typedef pcl::PointXYZI PointType;
-    typedef pcl::PointCloud<PointType> CloudType;
-    typedef pcl::PointCloud<PointType>::Ptr CloudPtrType;
-    typedef CloudType::ConstPtr CloudConstPtrType;
-
     typedef pcl::octree::OctreePointCloudSearch<PointType> OctreeType;
     typedef OctreeType::Ptr OctreePtrType;
 

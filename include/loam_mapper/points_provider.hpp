@@ -7,6 +7,9 @@
 #include <boost/math/special_functions/relative_difference.hpp>
 #include <boost/filesystem.hpp>
 
+#include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/point_cloud2.hpp"
+
 #include <pcapplusplus/RawPacket.h>
 
 #include <cstdint>
@@ -52,13 +55,13 @@ public:
   std::vector<PointXYZIT> cloud_;
 
   void process_pcap(const boost::filesystem::path & pcap_path);
+  std::vector<PointsProvider::PointXYZIT> process_packet(const pcpp::RawPacket & rawPacket);
 
 private:
 
 
 
-  void process_pcaps(const std::vector<boost::filesystem::path>& paths_pcaps);
-  void process_packet(const pcpp::RawPacket & rawPacket);
+  void process_pcaps(const std::vector<boost::filesystem::path> & paths_pcaps);
 
   enum class ReturnMode { Strongest, LastReturn, DualReturn, DualReturnWithConfidence };
 

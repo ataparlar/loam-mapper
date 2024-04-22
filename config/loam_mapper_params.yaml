@@ -1,0 +1,17 @@
+/**:
+  ros__parameters:
+    pcap_dir_path: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/pcaps/
+    pose_txt_path: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/ytu_campus_080423_ground_truth.txt
+    pcd_export_directory: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/output/
+
+    map_origin_x: 658761.0
+    map_origin_y: 4542599.0
+    map_origin_z: 116.250886
+
+    imu2lidar_roll: 179.623
+    imu2lidar_pitch: -0.44
+    imu2lidar_yaw: 0.675
+
+    enable_ned2enu: true
+    voxel_resolution: 0.2
+    debug_mode: true
