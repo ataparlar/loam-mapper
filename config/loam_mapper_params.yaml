@@ -14,4 +14,4 @@
 
     enable_ned2enu: true
     voxel_resolution: 0.2
-    debug_mode: true
+    save_pcd: true

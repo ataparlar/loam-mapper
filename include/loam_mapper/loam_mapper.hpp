@@ -39,7 +39,7 @@ public:
 
   bool enable_ned2enu_;
   double voxel_resolution_;
-  bool debug_mode_;
+  bool save_pcd_;
 
   void process();
   void setAngles(double dx, double dy, double dz);

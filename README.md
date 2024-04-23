@@ -62,17 +62,19 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 ## Parameters
 
-| Param                  | Description                                                                           |
-|------------------------|---------------------------------------------------------------------------------------|
-| pcap_dir_path          | The folder path contains the PCAPs.                                                   |
-| pose_txt_path          | Path of the ground truth poses.                                                       |
-| pcd_export_directory   | Export directory for PCD files.                                                       |
-| map_origin_x           | X-coordinate of the origin of the map.                                                |
-| map_origin_y           | Y-coordinate of the origin of the map.                                                |
-| map_origin_z           | Z-coordinate of the origin of the map.                                                |
-| imu2lidar_roll         | LiDAR-IMU calibration **X** angle.                                                    |
-| imu2lidar_pitch        | LiDAR-IMU calibration **Y** angle.                                                    |
-| imu2lidar_yaw          | LiDAR-IMU calibration **Z** angle.                                                    |
-| enable_ned2enu         | Decider parameter for enabling NED to ENU transform for LiDAR-IMU calibration values. |
+| Param                | Description                                                                           |
+|----------------------|---------------------------------------------------------------------------------------|
+| pcap_dir_path        | The folder path contains the PCAPs.                                                   |
+| pose_txt_path        | Path of the ground truth poses.                                                       |
+| pcd_export_directory | Export directory for PCD files.                                                       |
+| map_origin_x         | X-coordinate of the origin of the map.                                                |
+| map_origin_y         | Y-coordinate of the origin of the map.                                                |
+| map_origin_z         | Z-coordinate of the origin of the map.                                                |
+| imu2lidar_roll       | LiDAR-IMU calibration **X** angle.                                                    |
+| imu2lidar_pitch      | LiDAR-IMU calibration **Y** angle.                                                    |
+| imu2lidar_yaw        | LiDAR-IMU calibration **Z** angle.                                                    |
+| enable_ned2enu       | Decider parameter for enabling NED to ENU transform for LiDAR-IMU calibration values. |
+| voxel_resolution     | Voxel resolution param for downsampling. (lower means denser point cloud)             |
+| save_pcd             | Decider parameter for saving point cloud as `pcd`.                                    |
 
 

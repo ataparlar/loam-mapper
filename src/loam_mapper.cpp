@@ -1,6 +1,8 @@
 
 #include "loam_mapper/loam_mapper.hpp"
 
+#include "loam_mapper/Occtree.h"
+
 #include <Eigen/Geometry>
 #include <loam_mapper/point_types.hpp>
 #include <loam_mapper/utils.hpp>
@@ -38,7 +40,7 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   this->declare_parameter("imu2lidar_yaw", 0.0);
   this->declare_parameter("enable_ned2enu", true);
   this->declare_parameter("voxel_resolution", 0.4);
-  this->declare_parameter("debug_mode", true);
+  this->declare_parameter("save_pcd", true);
 
   pcap_dir_path_ = this->get_parameter("pcap_dir_path").as_string();
   pose_txt_path_ = this->get_parameter("pose_txt_path").as_string();
@@ -51,7 +53,7 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   imu2lidar_yaw_ = this->get_parameter("imu2lidar_yaw").as_double();
   enable_ned2enu_ = this->get_parameter("enable_ned2enu").as_bool();
   voxel_resolution_ = this->get_parameter("voxel_resolution").as_double();
-  debug_mode_ = this->get_parameter("debug_mode").as_bool();
+  save_pcd_ = this->get_parameter("save_pcd").as_bool();
 
   pub_ptr_cloud_current_ = this->create_publisher<PointCloud2>("cloud_current", 10);
   pub_ptr_path_ = this->create_publisher<nav_msgs::msg::Path>("vehicle_path", 10);
@@ -68,7 +70,7 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
 
   std::function<void(const Points &)> callback =
     std::bind(&LoamMapper::callback_cloud_surround_out, this, std::placeholders::_1);
-  points_provider->process_pcaps_into_clouds(callback, 0, 1);
+  points_provider->process_pcaps_into_clouds(callback, 0, 2);
   std::cout << "process_pcaps_into_clouds done" << std::endl;
 
   process();
@@ -102,8 +104,7 @@ void LoamMapper::process()
   path_.header.frame_id = "map";
   path_.poses.resize(transform_provider->poses_.size());
 
-
-//  points_provider::PointsProvider::Points cloud_all;
+  points_provider::PointsProvider::Points cloud_all;
 
   for (auto & cloud : clouds) {
     points_provider::PointsProvider::Points cloud_trans;
@@ -123,15 +124,7 @@ void LoamMapper::process()
         const auto & pose_ori = pose.pose_with_covariance.pose.orientation;
         Eigen::Quaterniond quat(pose_ori.w, pose_ori.x, pose_ori.y, pose_ori.z);
 
-
-        Eigen::Affine3d ned2enu(Eigen::Affine3d::Identity());
-        ned2enu.matrix().topLeftCorner<3, 3>() =
-          Eigen::AngleAxisd(utils::Utils::deg_to_rad(-90.0), Eigen::Vector3d::UnitZ())
-            .toRotationMatrix() *
-          Eigen::AngleAxisd(utils::Utils::deg_to_rad(0.0), Eigen::Vector3d::UnitY())
-            .toRotationMatrix() *
-          Eigen::AngleAxisd(utils::Utils::deg_to_rad(180.0), Eigen::Vector3d::UnitX())
-            .toRotationMatrix();
+        Eigen::Affine3d affine_sensor2map(Eigen::Affine3d::Identity());
 
         Eigen::Affine3d affine_imu2lidar(Eigen::Affine3d::Identity());
         affine_imu2lidar.matrix().topLeftCorner<3, 3>() =
@@ -142,12 +135,26 @@ void LoamMapper::process()
           Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_roll_), Eigen::Vector3d::UnitX())
             .toRotationMatrix();
 
-        Eigen::Affine3d affine_imu2lidar_enu(Eigen::Affine3d::Identity());
-        affine_imu2lidar_enu = affine_imu2lidar.matrix() * ned2enu.matrix();
+        if (enable_ned2enu_) {
+          Eigen::Affine3d ned2enu(Eigen::Affine3d::Identity());
+          ned2enu.matrix().topLeftCorner<3, 3>() =
+            Eigen::AngleAxisd(utils::Utils::deg_to_rad(-90.0), Eigen::Vector3d::UnitZ())
+              .toRotationMatrix() *
+            Eigen::AngleAxisd(utils::Utils::deg_to_rad(0.0), Eigen::Vector3d::UnitY())
+              .toRotationMatrix() *
+            Eigen::AngleAxisd(utils::Utils::deg_to_rad(180.0), Eigen::Vector3d::UnitX())
+              .toRotationMatrix();
 
-        Eigen::Affine3d affine_sensor2map(Eigen::Affine3d::Identity());
-        affine_sensor2map.matrix().topLeftCorner<3, 3>() =
-          quat.toRotationMatrix() * affine_imu2lidar_enu.rotation();
+          Eigen::Affine3d affine_imu2lidar_enu(Eigen::Affine3d::Identity());
+          affine_imu2lidar_enu = affine_imu2lidar.matrix() * ned2enu.matrix();
+
+          affine_sensor2map.matrix().topLeftCorner<3, 3>() =
+            quat.toRotationMatrix() * affine_imu2lidar_enu.rotation();
+
+        } else {
+          affine_sensor2map.matrix().topLeftCorner<3, 3>() =
+            quat.toRotationMatrix() * affine_imu2lidar.rotation();
+        }
 
         auto & pose_pos = pose_stamped.pose.position;
         affine_sensor2map.matrix().topRightCorner<3, 1>() << pose_pos.x, pose_pos.y, pose_pos.z;
@@ -159,16 +166,31 @@ void LoamMapper::process()
         point_trans.y = static_cast<float>(vec_point_trans(1));
         point_trans.z = static_cast<float>(vec_point_trans(2));
         point_trans.intensity = point.intensity;
+
         return point_trans;
       });
 
-//    cloud_all.insert(cloud_all.end(), cloud_trans.begin(), cloud_trans.end());
-        std::this_thread::sleep_for(std::chrono::milliseconds(60));
-        auto cloud_ptr_current = thing_to_cloud(cloud_trans, "map");
-        pub_ptr_cloud_current_->publish(*cloud_ptr_current);
+    cloud_all.insert(cloud_all.end(), cloud_trans.begin(), cloud_trans.end());
+    std::this_thread::sleep_for(std::chrono::milliseconds(60));
+    auto cloud_ptr_current = thing_to_cloud(cloud_trans, "map");
+    pub_ptr_cloud_current_->publish(*cloud_ptr_current);
   }
 
+  if (save_pcd_) {
+    Occtree occ_cloud(voxel_resolution_);
+    //    occ_cloud.cloud->resize(1000000);
 
+    for (const auto & point : cloud_all) {
+      occ_cloud.addPointIfVoxelEmpty(pcl::PointXYZI(point.x, point.y, point.z, point.intensity));
+    }
+
+    pcl::PointCloud<pcl::PointXYZI> new_cloud;
+    for (auto & point : *occ_cloud.cloud) {
+      new_cloud.push_back(point);
+    }
+    pcl::io::savePCDFileASCII(pcd_export_dir_ + "ytu_campus.pcd", new_cloud);
+    std::cout << "PCD saved." << std::endl;
+  }
 
   std::cout << "LoamMapper is done." << std::endl;
 }
