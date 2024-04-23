@@ -1,22 +1,45 @@
 #ifndef BUILD_POINT_TYPES_HPP
 #define BUILD_POINT_TYPES_HPP
 
+#include <boost/math/special_functions/relative_difference.hpp>
 
-#include <pcl/point_types.h>
-#include <pcl/point_cloud.h>
-#include <pcl/kdtree/kdtree_flann.h>
+#include <limits>
+#include <numeric>
 
-typedef pcl::PointXYZI PointType;
-//typedef pcl::PointXYZRGBNormal PointType;
-typedef pcl::PointCloud<PointType> CloudType;
-typedef CloudType::Ptr CloudPtrType;
-typedef CloudType::ConstPtr CloudConstPtrType;
-typedef pcl::KdTreeFLANN<PointType> KdTreeType;
-typedef KdTreeType::Ptr KdTreePtrType;
+namespace loam_mapper::point_types
+{
+struct PointXYZI
+{
+  float x{0.0F};
+  float y{0.0F};
+  float z{0.0F};
+  float intensity{0.0F};
+  friend bool operator==(const PointXYZI & p1, const PointXYZI & p2)
+  {
+    using boost::math::epsilon_difference;
+    return epsilon_difference(p1.x, p2.x) == 0.0F && epsilon_difference(p1.y, p2.y) == 0.0F &&
+           epsilon_difference(p1.z, p2.z) == 0.0F &&
+           epsilon_difference(p1.intensity, p2.intensity) == 0.0F;
+  }
+} __attribute__((packed));
 
-typedef pcl::PointXYZHSV PointColorType;
-typedef pcl::PointCloud<PointColorType> CloudColorType;
-typedef CloudColorType::Ptr CloudColorPtrType;
-
+struct PointXYZIT
+{
+  float x{0.0F};
+  float y{0.0F};
+  float z{0.0F};
+  uint32_t intensity{0U};
+  uint32_t stamp_unix_seconds{0U};
+  uint32_t stamp_nanoseconds{0U};
+  friend bool operator==(const PointXYZIT & p1, const PointXYZIT & p2)
+  {
+    using boost::math::epsilon_difference;
+    return epsilon_difference(p1.x, p2.x) == 0.0F && epsilon_difference(p1.y, p2.y) == 0.0F &&
+           epsilon_difference(p1.z, p2.z) == 0.0F && p1.intensity == p2.intensity &&
+           p1.stamp_unix_seconds == p2.stamp_unix_seconds &&
+           p1.stamp_nanoseconds == p2.stamp_nanoseconds;
+  }
+} __attribute__((packed));
+}  // namespace loam_mapper::point_types
 
 #endif  // BUILD_POINT_TYPES_HPP

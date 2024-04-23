@@ -13,6 +13,7 @@ find_package(PcapPlusPlus REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(tf2 REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(PCL REQUIRED)
 
@@ -22,6 +23,7 @@ include_directories(include
 
 set(LOAM_MAPPER_LIB_SRC
         src/utils.cpp
+        src/continuous_packet_parser.cpp
         src/points_provider.cpp
         src/transform_provider.cpp
         src/loam_mapper.cpp)
@@ -30,8 +32,9 @@ set(LOAM_MAPPER_LIB_HEADERS
         include/loam_mapper/utils.hpp
         include/loam_mapper/date.h
         include/loam_mapper/csv.hpp
-        include/loam_mapper/point_types.hpp
         include/loam_mapper/Occtree.h
+        include/loam_mapper/continuous_packet_parser.hpp
+        include/loam_mapper/points_provider_base.hpp
         include/loam_mapper/points_provider.hpp
         include/loam_mapper/transform_provider.hpp
         include/loam_mapper/loam_mapper.hpp)
@@ -52,13 +55,13 @@ endif ()
 install(TARGETS ${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
 
- install(DIRECTORY
-         launch
-         DESTINATION share/${PROJECT_NAME}/
- )
- install(DIRECTORY
-         config
-         DESTINATION share/${PROJECT_NAME}/
- )
+#  install(DIRECTORY
+#          launch
+#          DESTINATION share/${PROJECT_NAME}/
+#  )
+#  install(DIRECTORY
+#          config
+#          DESTINATION share/${PROJECT_NAME}/
+#  )
 
 ament_auto_package()
