@@ -50,7 +50,7 @@ using the below commands for using.
 mkdir -p loam_mapping_ws/src
 cd loam_mapping_ws/src
 git clone https://github.com/ataparlar/loam-mapper
-cd ../..
+cd ../
 colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 ```
 
