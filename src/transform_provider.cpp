@@ -1,17 +1,35 @@
 #include "loam_mapper/transform_provider.hpp"
-
-#include "iostream"
+#include "loam_mapper/csv.hpp"
+#include <string>
+#include <array>
+#include <sstream>
+#include <exception>
+#include <algorithm>
+#include <iostream>
+#include <Eigen/Geometry>
+#include <GeographicLib/LocalCartesian.hpp>
 #include "loam_mapper/date.h"
 #include "loam_mapper/utils.hpp"
 
-#include <Eigen/Geometry>
-
-namespace loam_mapper
+namespace loam_mapper::transform_provider
 {
 TransformProvider::TransformProvider(
-  const boost::filesystem::path & pose_txt, double origin_x, double origin_y, double origin_z)
+  const std::string & path_file_ascii_output)
+: path_file_ascii_output_(path_file_ascii_output)
 {
-  io::LineReader lines(pose_txt.string());
+  if (!fs::exists(path_file_ascii_output_)) {
+    throw std::runtime_error(
+      "path_file_ascii_output doesn't exist: " + path_file_ascii_output_.string());
+  }
+  if (!fs::is_regular_file(path_file_ascii_output_)) {
+    throw std::runtime_error(
+      "path_file_ascii_output is not a file path: " + path_file_ascii_output_.string());
+  }
+}
+
+void TransformProvider::process(double origin_x, double origin_y, double origin_z)
+{
+  io::LineReader lines(path_file_ascii_output_.string());
   double line_number = 1;
   while (char * line = lines.next_line()) {
     if (line_number == 16) {  // 16 is the mission date line in the applanix export file
@@ -30,7 +48,7 @@ TransformProvider::TransformProvider(
 
   std::string temp_pose_file = "temp_pose_file.csv";
   {
-    std::ifstream filein(pose_txt.string());  // File to read from
+    std::ifstream filein(path_file_ascii_output_.string());  // File to read from
     std::ofstream fileout(temp_pose_file);    // Temporary file
     if (!filein || !fileout) {
       // throw exception
@@ -194,36 +212,24 @@ TransformProvider::TransformProvider(
 }
 
 TransformProvider::Pose TransformProvider::get_pose_at(
-  uint32_t stamp_unix_seconds, uint32_t stamp_nanoseconds)
+  uint32_t stamp_unix_seconds,
+  uint32_t stamp_nanoseconds)
 {
   Pose pose_search;
   pose_search.stamp_unix_seconds = stamp_unix_seconds;
   pose_search.stamp_nanoseconds = stamp_nanoseconds;
   auto iter_result = std::lower_bound(
-    poses_.begin(), poses_.end(), pose_search, [](const Pose & p1, const Pose & p2) {
+    poses_.begin(), poses_.end(), pose_search,
+    [](const Pose & p1, const Pose & p2) {
       if (p1.stamp_unix_seconds == p2.stamp_unix_seconds) {
         return p1.stamp_nanoseconds < p2.stamp_nanoseconds;
       }
       return p1.stamp_unix_seconds < p2.stamp_unix_seconds;
     });
+
   size_t index = std::distance(poses_.begin(), iter_result);
+  //  std::cout << "ind: " << index << std::endl;
   return poses_.at(index);
 }
 
-geometry_msgs::msg::PoseStamped TransformProvider::convert_to_ros_pose(TransformProvider::Pose pose) {
-  geometry_msgs::msg::PoseStamped ros_pose;
-  ros_pose.header.frame_id = "map";
-  ros_pose.header.stamp.sec = pose.stamp_unix_seconds;
-  ros_pose.header.stamp.nanosec = pose.stamp_nanoseconds;
-  ros_pose.pose.position.set__x(pose.pose_with_covariance.pose.position.x);
-  ros_pose.pose.position.set__y(pose.pose_with_covariance.pose.position.y);
-  ros_pose.pose.position.set__z(pose.pose_with_covariance.pose.position.z);
-  ros_pose.pose.orientation.set__x(pose.pose_with_covariance.pose.orientation.x);
-  ros_pose.pose.orientation.set__y(pose.pose_with_covariance.pose.orientation.y);
-  ros_pose.pose.orientation.set__z(pose.pose_with_covariance.pose.orientation.z);
-  ros_pose.pose.orientation.set__w(pose.pose_with_covariance.pose.orientation.w);
-
-  return ros_pose;
-}
-
-}  // namespace loam_mapper
+}  // loam_mapper::transform_provider

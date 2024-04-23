@@ -1,26 +1,27 @@
-#include "loam_mapper/date.h"
+
 #include "loam_mapper/points_provider.hpp"
 #include "loam_mapper/transform_provider.hpp"
-#include "rclcpp/rclcpp.hpp"
+#include <rclcpp/rclcpp.hpp>
+#include <memory>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <nav_msgs/msg/path.hpp>
+#include <geometry_msgs/msg/pose_array.hpp>
 
-#include <boost/filesystem.hpp>
-#include <boost/math/special_functions/relative_difference.hpp>
-
-#include "sensor_msgs/msg/point_cloud2.hpp"
-#include "nav_msgs/msg/path.hpp"
-
-#include <pcapplusplus/RawPacket.h>
-
-#include <cstdint>
-#include <cstdlib>
-#include <limits>
-#include <map>
 
 namespace loam_mapper
 {
 class LoamMapper : public rclcpp::Node
 {
 public:
+  using SharedPtr = std::shared_ptr<LoamMapper>;
+  using ConstSharedPtr = const std::shared_ptr<LoamMapper>;
+  using PointCloud2 = sensor_msgs::msg::PointCloud2;
+  using Points = points_provider::PointsProviderBase::Points;
+
+
+
   explicit LoamMapper();
 
   // Params
@@ -38,14 +39,28 @@ public:
 
   bool enable_ned2enu_;
   double voxel_resolution_;
-  bool debug_mode_;
+  bool save_pcd_;
 
-  TransformProvider::SharedPtr transform_provider;
-  PointsProvider::SharedPtr points_provider;
+  void process();
+  void setAngles(double dx, double dy, double dz);
 
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr ros_cloud_pub;
-  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub;
+  double deg_x, def_x;
+  double deg_y, def_y;
+  double deg_z, def_z;
+
+  std::vector<points_provider::PointsProvider::Points> clouds;
 
 private:
+  rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_cloud_current_;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_ptr_path_;
+
+  transform_provider::TransformProvider::SharedPtr transform_provider;
+  points_provider::PointsProvider::SharedPtr points_provider;
+
+  PointCloud2::SharedPtr points_to_cloud(const Points & points_bad, const std::string & frame_id);
+
+  void callback_cloud_surround_out(const Points & points_surround);
+
 };
+
 }  // namespace loam_mapper
