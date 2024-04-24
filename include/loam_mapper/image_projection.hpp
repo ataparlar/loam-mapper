@@ -56,10 +56,10 @@ public:
 
   Points currentCloudMsg;
 
-  double * imuTime = new double[queueLength];
-  double * imuRotX = new double[queueLength];
-  double * imuRotY = new double[queueLength];
-  double * imuRotZ = new double[queueLength];
+//  double * imuTime = new double[queueLength];
+//  double * imuRotX = new double[queueLength];
+//  double * imuRotY = new double[queueLength];
+//  double * imuRotZ = new double[queueLength];
 
 //  int imuPointerCur{};
 //  bool firstPointFlag{};
@@ -98,7 +98,7 @@ public:
   //  PointType deskewPoint(PointType * point, double relTime);
   void projectPointCloud(Points & laserCloudMsg);
   void cloudExtraction(Points & laserCloudMsg);
-  void publishClouds();
+//  void publishClouds();
   void resetParameters();
 };
 

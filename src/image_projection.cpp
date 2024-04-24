@@ -120,17 +120,17 @@ void ImageProjection::resetParameters()
   // reset range matrix for range image projection
   rangeMat = cv::Mat(16, 1800, CV_32F, cv::Scalar::all(FLT_MAX));
 
-  imuPointerCur = 0;
-  firstPointFlag = true;
-  odomDeskewFlag = false;
-
-  for (int i = 0; i < queueLength; ++i)
-  {
-    imuTime[i] = 0;
-    imuRotX[i] = 0;
-    imuRotY[i] = 0;
-    imuRotZ[i] = 0;
-  }
+//  imuPointerCur = 0;
+//  firstPointFlag = true;
+//  odomDeskewFlag = false;
+//
+//  for (int i = 0; i < queueLength; ++i)
+//  {
+//    imuTime[i] = 0;
+//    imuRotX[i] = 0;
+//    imuRotY[i] = 0;
+//    imuRotZ[i] = 0;
+//  }
 }
 
 }  // namespace loam_mapper::image_projection

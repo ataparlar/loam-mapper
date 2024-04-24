@@ -228,6 +228,7 @@ sensor_msgs::msg::Image LoamMapper::createImageFromRangeMat(const cv::Mat & rang
   image.height = 16;
   image.width = 1800;
   image.step = rangeMat.step;
+  image.encoding = "mono8";
   for (int i=0; i<16; i++) {
     for (int j=0; j<1800; j++) {
       image.data.push_back(rangeMat.at<char>(i, j));
