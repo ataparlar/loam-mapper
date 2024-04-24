@@ -41,7 +41,7 @@ struct PointXYZIT
   }
 } __attribute__((packed));
 
-struct PointXYZITR
+struct PointXYZITRH
 {
   float x{0.0F};
   float y{0.0F};
@@ -50,7 +50,8 @@ struct PointXYZITR
   uint32_t stamp_unix_seconds{0U};
   uint32_t stamp_nanoseconds{0U};
   uint32_t ring{0U};
-  friend bool operator==(const PointXYZITR & p1, const PointXYZITR & p2)
+  float horizontal_angle{0.0F};
+  friend bool operator==(const PointXYZITRH & p1, const PointXYZITRH & p2)
   {
     using boost::math::epsilon_difference;
     return epsilon_difference(p1.x, p2.x) == 0.0F && epsilon_difference(p1.y, p2.y) == 0.0F &&

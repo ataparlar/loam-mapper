@@ -18,7 +18,7 @@ namespace loam_mapper::points_provider::continuous_packet_parser
 class ContinuousPacketParser
 {
 public:
-  using Point = point_types::PointXYZITR;
+  using Point = point_types::PointXYZITRH;
   using Points = std::vector<Point>;
 
   ContinuousPacketParser();
