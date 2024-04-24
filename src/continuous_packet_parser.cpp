@@ -243,6 +243,7 @@ void ContinuousPacketParser::process_packet_into_cloud(
           point.y = dist_xy * std::cos(angle_rad_azimuth_point);
           point.z = dist_m * std::sin(angle_rad_vertical);
           point.intensity = data_point.reflectivity;
+          point.ring = ind_point % 16 + 1;
           point.stamp_unix_seconds =
             std::chrono::seconds(
               tp_hours_since_epoch.time_since_epoch() + microseconds_since_toh.minutes() +

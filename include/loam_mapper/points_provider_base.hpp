@@ -15,7 +15,7 @@ namespace loam_mapper::points_provider
 class PointsProviderBase
 {
 public:
-  using Point = point_types::PointXYZIT;
+  using Point = point_types::PointXYZITR;
   using Points = std::vector<Point>;
   virtual void process() = 0;
   //  virtual bool get_next_cloud(std::vector<Points> & cloud_out) = 0;

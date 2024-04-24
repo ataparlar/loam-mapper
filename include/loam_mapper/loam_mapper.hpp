@@ -42,16 +42,12 @@ public:
   bool save_pcd_;
 
   void process();
-  void setAngles(double dx, double dy, double dz);
-
-  double deg_x, def_x;
-  double deg_y, def_y;
-  double deg_z, def_z;
 
   std::vector<points_provider::PointsProvider::Points> clouds;
 
 private:
-  rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_cloud_current_;
+  rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_basic_cloud_current_;
+  rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_loam_cloud_current_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_ptr_path_;
 
   transform_provider::TransformProvider::SharedPtr transform_provider;
