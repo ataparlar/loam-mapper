@@ -7,6 +7,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <rclcpp/rclcpp.hpp>
 
 namespace loam_mapper::utils
 {
@@ -23,6 +24,12 @@ public:
   {
     constexpr double multiplier = M_PI / 180.0;
     return static_cast<T>(deg * multiplier);
+  }
+
+  template<typename T>
+  static double stamp2Sec(const T& stamp)
+  {
+    return rclcpp::Time(stamp).seconds();
   }
 };
 

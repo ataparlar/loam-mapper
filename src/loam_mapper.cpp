@@ -55,8 +55,10 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   voxel_resolution_ = this->get_parameter("voxel_resolution").as_double();
   save_pcd_ = this->get_parameter("save_pcd").as_bool();
 
-  pub_ptr_cloud_current_ = this->create_publisher<PointCloud2>("cloud_current", 10);
+  pub_ptr_basic_cloud_current_ = this->create_publisher<PointCloud2>("basic_cloud_current", 10);
+  pub_ptr_loam_cloud_current_ = this->create_publisher<PointCloud2>("loam_cloud_current", 10);
   pub_ptr_path_ = this->create_publisher<nav_msgs::msg::Path>("vehicle_path", 10);
+  pub_ptr_image_ = this->create_publisher<sensor_msgs::msg::Image>("rangeMat", 10);
 
   transform_provider = std::make_shared<transform_provider::TransformProvider>(
     "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/"
@@ -68,19 +70,14 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
     "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/pcaps/"));
   points_provider->process();
 
+  image_projection = std::make_shared<image_projection::ImageProjection>();
+
   std::function<void(const Points &)> callback =
     std::bind(&LoamMapper::callback_cloud_surround_out, this, std::placeholders::_1);
   points_provider->process_pcaps_into_clouds(callback, 0, 2);
   std::cout << "process_pcaps_into_clouds done" << std::endl;
 
   process();
-}
-
-void LoamMapper::setAngles(double dx, double dy, double dz)
-{
-  deg_x = def_x + dx;
-  deg_y = def_y + dy;
-  deg_z = def_z + dz;
 }
 
 void LoamMapper::process()
@@ -170,15 +167,23 @@ void LoamMapper::process()
         return point_trans;
       });
 
+
+//    image_projection->setLaserCloudIn(cloud_trans);
+    image_projection->cloudHandler(cloud_trans);
+
+    sensor_msgs::msg::Image image = createImageFromRangeMat(image_projection->rangeMat);
+
     cloud_all.insert(cloud_all.end(), cloud_trans.begin(), cloud_trans.end());
-    std::this_thread::sleep_for(std::chrono::milliseconds(60));
+    std::this_thread::sleep_for(std::chrono::milliseconds(40));
     auto cloud_ptr_current = thing_to_cloud(cloud_trans, "map");
-    pub_ptr_cloud_current_->publish(*cloud_ptr_current);
+    pub_ptr_basic_cloud_current_->publish(*cloud_ptr_current);
+    pub_ptr_image_->publish(image);
+
+    image_projection->resetParameters();
   }
 
   if (save_pcd_) {
     Occtree occ_cloud(voxel_resolution_);
-    //    occ_cloud.cloud->resize(1000000);
 
     for (const auto & point : cloud_all) {
       occ_cloud.addPointIfVoxelEmpty(pcl::PointXYZI(point.x, point.y, point.z, point.intensity));
@@ -214,6 +219,22 @@ sensor_msgs::msg::PointCloud2::SharedPtr LoamMapper::points_to_cloud(
         point_bad.x, point_bad.y, point_bad.z, static_cast<float>(point_bad.intensity)};
     });
   return cloud_ptr_current;
+}
+
+sensor_msgs::msg::Image LoamMapper::createImageFromRangeMat(const cv::Mat & rangeMat) {
+  sensor_msgs::msg::Image image;
+  image.header.stamp = this->get_clock()->now();
+  image.header.frame_id = "map";
+  image.height = 16;
+  image.width = 1800;
+  image.step = rangeMat.step;
+  image.encoding = "mono8";
+  for (int i=0; i<16; i++) {
+    for (int j=0; j<1800; j++) {
+      image.data.push_back(rangeMat.at<char>(i, j));
+    }
+  }
+  return image;
 }
 
 }  // namespace loam_mapper

@@ -16,6 +16,7 @@ find_package(nav_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(PCL REQUIRED)
+find_package(OpenCV REQUIRED)
 
 include_directories(include
         ${PCL_INCLUDE_DIRS}
@@ -26,6 +27,7 @@ set(LOAM_MAPPER_LIB_SRC
         src/continuous_packet_parser.cpp
         src/points_provider.cpp
         src/transform_provider.cpp
+        src/image_projection.cpp
         src/loam_mapper.cpp)
 
 set(LOAM_MAPPER_LIB_HEADERS
@@ -37,12 +39,14 @@ set(LOAM_MAPPER_LIB_HEADERS
         include/loam_mapper/points_provider_base.hpp
         include/loam_mapper/points_provider.hpp
         include/loam_mapper/transform_provider.hpp
+        include/loam_mapper/image_projection.hpp
         include/loam_mapper/loam_mapper.hpp)
 
 add_executable(${PROJECT_NAME}
         ${LOAM_MAPPER_LIB_SRC}
         ${LOAM_MAPPER_LIB_HEADERS})
-ament_target_dependencies(${PROJECT_NAME} rclcpp PcapPlusPlus PCL pcl_conversions geometry_msgs sensor_msgs nav_msgs)
+ament_target_dependencies(${PROJECT_NAME} rclcpp PcapPlusPlus PCL pcl_conversions geometry_msgs
+        sensor_msgs nav_msgs OpenCV)
 target_link_libraries(${PROJECT_NAME}
         ${PCL_LIBRARIES}
         ${PcapPlusPlus_LIBRARIES})

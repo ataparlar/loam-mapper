@@ -1,9 +1,11 @@
 
 #include "loam_mapper/points_provider.hpp"
 #include "loam_mapper/transform_provider.hpp"
+#include "loam_mapper/image_projection.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include <memory>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <sensor_msgs/msg/image.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <nav_msgs/msg/path.hpp>
@@ -42,24 +44,23 @@ public:
   bool save_pcd_;
 
   void process();
-  void setAngles(double dx, double dy, double dz);
-
-  double deg_x, def_x;
-  double deg_y, def_y;
-  double deg_z, def_z;
 
   std::vector<points_provider::PointsProvider::Points> clouds;
 
 private:
-  rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_cloud_current_;
+  rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_basic_cloud_current_;
+  rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_loam_cloud_current_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_ptr_path_;
+  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub_ptr_image_;
 
   transform_provider::TransformProvider::SharedPtr transform_provider;
   points_provider::PointsProvider::SharedPtr points_provider;
+  image_projection::ImageProjection::SharedPtr image_projection;
 
   PointCloud2::SharedPtr points_to_cloud(const Points & points_bad, const std::string & frame_id);
 
   void callback_cloud_surround_out(const Points & points_surround);
+  sensor_msgs::msg::Image createImageFromRangeMat(const cv::Mat & rangeMat);
 
 };
 
