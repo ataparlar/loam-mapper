@@ -2,6 +2,7 @@
 #include "loam_mapper/points_provider.hpp"
 #include "loam_mapper/transform_provider.hpp"
 #include "loam_mapper/image_projection.hpp"
+#include "loam_mapper/feature_extraction.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include <memory>
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -49,18 +50,21 @@ public:
 
 private:
   rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_basic_cloud_current_;
-  rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_loam_cloud_current_;
+  rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_corner_cloud_current_;
+  rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_surface_cloud_current_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_ptr_path_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub_ptr_image_;
 
   transform_provider::TransformProvider::SharedPtr transform_provider;
   points_provider::PointsProvider::SharedPtr points_provider;
   image_projection::ImageProjection::SharedPtr image_projection;
+  feature_extraction::FeatureExtraction::SharedPtr feature_extraction;
 
   PointCloud2::SharedPtr points_to_cloud(const Points & points_bad, const std::string & frame_id);
 
   void callback_cloud_surround_out(const Points & points_surround);
   sensor_msgs::msg::Image createImageFromRangeMat(const cv::Mat & rangeMat);
+  void clear_cloudInfo(utils::Utils::CloudInfo & cloudInfo);
 
 };
 

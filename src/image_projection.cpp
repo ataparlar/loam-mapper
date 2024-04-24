@@ -70,8 +70,11 @@ void ImageProjection::projectPointCloud(Points & laserCloudMsg)
 
     int columnIdn = -1;
     float horizonAngle = laserCloudMsg[i].horizontal_angle;
+    std::cout << "range: " << range << std::endl;
+    std::cout << "horizonAngle: " << horizonAngle << std::endl;
+    std::cout << "ring: " << rowIdn << "\n" << std::endl;
     static float ang_res_x = 360.0 / float(1800);
-    columnIdn = -round((horizonAngle) / ang_res_x) + 900;
+    columnIdn = -round((horizonAngle-90.0) / ang_res_x) + 900;
     //                RCLCPP_INFO(this->get_logger(), "columnIdn: %d", columnIdn);
     if (columnIdn >= 1800) columnIdn -= 1800;
 
@@ -92,13 +95,16 @@ void ImageProjection::projectPointCloud(Points & laserCloudMsg)
 void ImageProjection::cloudExtraction(Points & laserCloudMsg) {
   int count = 0;
   // extract segmented cloud for lidar odometry
+//  std::cout << laserCloudMsg.size() << std::endl;
   for (int i = 0; i < 16; ++i)
   {
+
     cloudInfo.start_ring_index[i] = count - 1 + 5;
     for (int j = 0; j < 1800; ++j)
     {
       if (rangeMat.at<float>(i,j) != FLT_MAX)
       {
+//        std::cout << "i: " << i << "\tj: " << j << std::endl;
         // mark the points' column index for marking occlusion later
         cloudInfo.point_col_index[count] = j;
         // save range info
@@ -107,10 +113,17 @@ void ImageProjection::cloudExtraction(Points & laserCloudMsg) {
         extractedCloud.push_back(laserCloudMsg[j + i*1800]);
         // size of extracted cloud
         ++count;
+//        std::cout << "count: " << count << " - " << cloudInfo.point_range[count] << std::endl;
+//        std::cout << "count: " << count << " - " << rangeMat.at<float>(i,j) << std::endl;
+
       }
     }
     cloudInfo.end_ring_index[i] = count -1 - 5;
   }
+//  for (auto start : cloudInfo.start_ring_index) {
+//    if (start != 0) {
+//    }
+//  }
 }
 
 void ImageProjection::resetParameters()

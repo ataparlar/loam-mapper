@@ -1,9 +1,8 @@
 #ifndef BUILD_IMAGE_PROJECTION_HPP
 #define BUILD_IMAGE_PROJECTION_HPP
 
-#include "csv.hpp"
-#include "point_types.hpp"
 #include "points_provider_base.hpp"
+#include "utils.hpp"
 
 #include <Eigen/Geometry>
 #include <opencv2/opencv.hpp>
@@ -19,10 +18,9 @@
 #include <deque>
 #include <memory>
 #include <string>
-
+//
 namespace loam_mapper::image_projection
 {
-namespace fs = boost::filesystem;
 using PointCloud2 = sensor_msgs::msg::PointCloud2;
 using Point = points_provider::PointsProviderBase::Point;
 using Points = points_provider::PointsProviderBase::Points;
@@ -37,15 +35,9 @@ public:
 
   explicit ImageProjection();
 
-  struct CloudInfo
-  {
-    std::vector<float> point_range;
-    std::vector<uint32_t> start_ring_index;
-    std::vector<uint32_t> point_col_index;
-    std::vector<uint32_t> end_ring_index;
-  };
 
-  CloudInfo cloudInfo;
+
+  utils::Utils::CloudInfo cloudInfo;
 
   std::mutex imuLock;
   std::mutex odoLock;

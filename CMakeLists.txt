@@ -28,6 +28,7 @@ set(LOAM_MAPPER_LIB_SRC
         src/points_provider.cpp
         src/transform_provider.cpp
         src/image_projection.cpp
+        src/feature_extraction.cpp
         src/loam_mapper.cpp)
 
 set(LOAM_MAPPER_LIB_HEADERS
@@ -40,6 +41,7 @@ set(LOAM_MAPPER_LIB_HEADERS
         include/loam_mapper/points_provider.hpp
         include/loam_mapper/transform_provider.hpp
         include/loam_mapper/image_projection.hpp
+        include/loam_mapper/feature_extraction.hpp
         include/loam_mapper/loam_mapper.hpp)
 
 add_executable(${PROJECT_NAME}

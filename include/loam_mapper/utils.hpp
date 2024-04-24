@@ -31,6 +31,14 @@ public:
   {
     return rclcpp::Time(stamp).seconds();
   }
+
+  struct CloudInfo
+  {
+    std::vector<float> point_range;
+    std::vector<uint32_t> start_ring_index;
+    std::vector<uint32_t> point_col_index;
+    std::vector<uint32_t> end_ring_index;
+  };
 };
 
 }  // namespace loam_mapper::utils

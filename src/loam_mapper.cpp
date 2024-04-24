@@ -56,7 +56,8 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   save_pcd_ = this->get_parameter("save_pcd").as_bool();
 
   pub_ptr_basic_cloud_current_ = this->create_publisher<PointCloud2>("basic_cloud_current", 10);
-  pub_ptr_loam_cloud_current_ = this->create_publisher<PointCloud2>("loam_cloud_current", 10);
+  pub_ptr_corner_cloud_current_ = this->create_publisher<PointCloud2>("corner_cloud_current", 10);
+  pub_ptr_surface_cloud_current_ = this->create_publisher<PointCloud2>("surface_cloud_current", 10);
   pub_ptr_path_ = this->create_publisher<nav_msgs::msg::Path>("vehicle_path", 10);
   pub_ptr_image_ = this->create_publisher<sensor_msgs::msg::Image>("rangeMat", 10);
 
@@ -71,6 +72,7 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   points_provider->process();
 
   image_projection = std::make_shared<image_projection::ImageProjection>();
+  feature_extraction = std::make_shared<feature_extraction::FeatureExtraction>();
 
   std::function<void(const Points &)> callback =
     std::bind(&LoamMapper::callback_cloud_surround_out, this, std::placeholders::_1);
@@ -104,6 +106,8 @@ void LoamMapper::process()
   points_provider::PointsProvider::Points cloud_all;
 
   for (auto & cloud : clouds) {
+//    utils::Utils::CloudInfo cloudInfo;
+
     points_provider::PointsProvider::Points cloud_trans;
     cloud_trans.resize(cloud.size());
 
@@ -170,14 +174,25 @@ void LoamMapper::process()
 
 //    image_projection->setLaserCloudIn(cloud_trans);
     image_projection->cloudHandler(cloud_trans);
+//    sensor_msgs::msg::Image image = createImageFromRangeMat(image_projection->rangeMat);
 
-    sensor_msgs::msg::Image image = createImageFromRangeMat(image_projection->rangeMat);
+
+
+//    feature_extraction->laserCloudInfoHandler(cloud_trans, image_projection->cloudInfo);
+
+
+    auto corner_cloud_ptr_current = thing_to_cloud(feature_extraction->cornerCloud, "map");
+    pub_ptr_corner_cloud_current_->publish(*corner_cloud_ptr_current);
+
+    auto surface_cloud_ptr_current = thing_to_cloud(feature_extraction->cornerCloud, "map");
+    pub_ptr_surface_cloud_current_->publish(*surface_cloud_ptr_current);
+
 
     cloud_all.insert(cloud_all.end(), cloud_trans.begin(), cloud_trans.end());
     std::this_thread::sleep_for(std::chrono::milliseconds(40));
     auto cloud_ptr_current = thing_to_cloud(cloud_trans, "map");
     pub_ptr_basic_cloud_current_->publish(*cloud_ptr_current);
-    pub_ptr_image_->publish(image);
+//    pub_ptr_image_->publish(image);
 
     image_projection->resetParameters();
   }
@@ -235,6 +250,13 @@ sensor_msgs::msg::Image LoamMapper::createImageFromRangeMat(const cv::Mat & rang
     }
   }
   return image;
+}
+
+void LoamMapper::clear_cloudInfo(utils::Utils::CloudInfo & cloudInfo) {
+  cloudInfo.point_range.clear();
+  cloudInfo.start_ring_index.clear();
+  cloudInfo.end_ring_index.clear();
+  cloudInfo.point_col_index.clear();
 }
 
 }  // namespace loam_mapper
