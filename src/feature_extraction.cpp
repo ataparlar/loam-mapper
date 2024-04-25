@@ -137,6 +137,9 @@ void FeatureExtraction::extractFeatures(
           if (largestPickedNum <= 20) {
             cloudLabel[ind] = 1;
             cornerCloud.push_back(extractedCloud[ind]);
+
+            // ADD MARKER ARRAY HERE
+
           } else {
             break;
           }
@@ -188,11 +191,11 @@ void FeatureExtraction::extractFeatures(
 //      std::cout << "\n" << std::endl;
     }
 
-    surfaceCloudScanDS.clear();
     //    downSizeFilter.setInputCloud(surfaceCloudScan);
     //    downSizeFilter.filter(*surfaceCloudScanDS);
 
-    surfaceCloud.insert(surfaceCloud.end(), surfaceCloudScanDS.begin(), surfaceCloudScanDS.end());
+    surfaceCloud.insert(surfaceCloud.end(), surfaceCloudScan.begin(), surfaceCloudScan.end());
+    surfaceCloudScanDS.clear();
   }
 }
 
