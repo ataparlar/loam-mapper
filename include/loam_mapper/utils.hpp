@@ -32,6 +32,11 @@ public:
     return rclcpp::Time(stamp).seconds();
   }
 
+  static rclcpp::Time get_time()
+  {
+    return rclcpp::Clock().now();
+  }
+
   struct CloudInfo
   {
     std::vector<float> point_range;

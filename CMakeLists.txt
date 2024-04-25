@@ -13,6 +13,7 @@ find_package(PcapPlusPlus REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(PCL REQUIRED)
@@ -48,7 +49,7 @@ add_executable(${PROJECT_NAME}
         ${LOAM_MAPPER_LIB_SRC}
         ${LOAM_MAPPER_LIB_HEADERS})
 ament_target_dependencies(${PROJECT_NAME} rclcpp PcapPlusPlus PCL pcl_conversions geometry_msgs
-        sensor_msgs nav_msgs OpenCV)
+        sensor_msgs nav_msgs visualization_msgs OpenCV)
 target_link_libraries(${PROJECT_NAME}
         ${PCL_LIBRARIES}
         ${PcapPlusPlus_LIBRARIES})

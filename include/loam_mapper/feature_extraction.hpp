@@ -6,6 +6,7 @@
 #include "utils.hpp"
 
 #include "sensor_msgs/msg/point_cloud2.hpp"
+#include <visualization_msgs/msg/marker_array.hpp>
 
 #include <boost/filesystem.hpp>
 
@@ -46,6 +47,13 @@ public:
   Points extractedCloud;
   Points cornerCloud;
   Points surfaceCloud;
+
+  size_t marker_counter = 1;
+  visualization_msgs::msg::Marker marker_corner;
+  visualization_msgs::msg::MarkerArray markerArray_corner;
+  visualization_msgs::msg::Marker marker_surface;
+  visualization_msgs::msg::MarkerArray markerArray_surface;
+
 
   std::vector<smoothness_t> cloudSmoothness;
   float * cloudCurvature;

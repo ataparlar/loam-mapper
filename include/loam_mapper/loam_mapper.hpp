@@ -11,6 +11,7 @@
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <nav_msgs/msg/path.hpp>
 #include <geometry_msgs/msg/pose_array.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 
 namespace loam_mapper
@@ -54,6 +55,8 @@ private:
   rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_surface_cloud_current_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_ptr_path_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub_ptr_image_;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_ptr_marker_corner_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_ptr_marker_surface_;
 
   transform_provider::TransformProvider::SharedPtr transform_provider;
   points_provider::PointsProvider::SharedPtr points_provider;
