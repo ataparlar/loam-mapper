@@ -106,21 +106,26 @@ void FeatureExtraction::extractFeatures(
   Points surfaceCloudScan;
   Points surfaceCloudScanDS;
 
-  for (int i = 0; i < 16; i++) {
+  for (int i = 1; i < 16; i++) {
     surfaceCloudScan.clear();
 
     for (int j = 0; j < 6; j++) {
+
       int sp = (cloudInfo.start_ring_index[i] * (6 - j) + cloudInfo.end_ring_index[i] * j) / 6;
       int ep =
         (cloudInfo.start_ring_index[i] * (5 - j) + cloudInfo.end_ring_index[i] * (j + 1)) / 6 - 1;
 
-      if (sp >= ep) continue;
+//      std::cout << "i: " << i << std::endl;
+//      std::cout << "j: " << j << std::endl;
+//
+//      std::cout << "sp: " << sp << std::endl;
+//      std::cout << "ep: " << ep << std::endl;
+//
+//
+//      std::cout << "cloudInfo.start_ring_index[i]: " << cloudInfo.start_ring_index[i] << std::endl;
+//      std::cout << "cloudInfo.end_ring_index[i]: " << cloudInfo.end_ring_index[i] << std::endl;
 
-//      for (auto smooth : cloudSmoothness) {
-//        if (smooth.value != 0) {
-//          std::cout << smooth.value << std::endl;
-//        }
-//      }
+      if (sp >= ep) continue;
 
       std::sort(cloudSmoothness.begin() + sp, cloudSmoothness.begin() + ep, by_value());
 
@@ -180,6 +185,7 @@ void FeatureExtraction::extractFeatures(
           surfaceCloudScan.push_back(extractedCloud[k]);
         }
       }
+//      std::cout << "\n" << std::endl;
     }
 
     surfaceCloudScanDS.clear();

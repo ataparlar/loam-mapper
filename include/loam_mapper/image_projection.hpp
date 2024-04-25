@@ -61,7 +61,7 @@ public:
   Points extractedCloud;
 
 //  int deskewFlag{};
-  cv::Mat rangeMat = cv::Mat(16, 1800, CV_32F, cv::Scalar::all(FLT_MAX));
+  cv::Mat rangeMat;
 
 //  bool odomDeskewFlag{};
 //  float odomIncreX{};
@@ -76,6 +76,7 @@ public:
   std::vector<int> columnIdnCountVec;
 
 //  void setLaserCloudIn(const Points & cloud);
+  void allocateMemory();
 
   void imuHandler(const sensor_msgs::msg::Imu imuMsg);
   void odomHandler(const nav_msgs::msg::Odometry odometryMsg);

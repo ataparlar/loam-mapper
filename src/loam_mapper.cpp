@@ -166,25 +166,23 @@ void LoamMapper::process()
         point_trans.x = static_cast<float>(vec_point_trans(0));
         point_trans.y = static_cast<float>(vec_point_trans(1));
         point_trans.z = static_cast<float>(vec_point_trans(2));
+        point_trans.ring = point.ring;
+        point_trans.horizontal_angle = point.horizontal_angle;
         point_trans.intensity = point.intensity;
 
         return point_trans;
       });
 
-
 //    image_projection->setLaserCloudIn(cloud_trans);
     image_projection->cloudHandler(cloud_trans);
 //    sensor_msgs::msg::Image image = createImageFromRangeMat(image_projection->rangeMat);
 
-
-
-//    feature_extraction->laserCloudInfoHandler(cloud_trans, image_projection->cloudInfo);
-
+    feature_extraction->laserCloudInfoHandler(cloud_trans, image_projection->cloudInfo);
 
     auto corner_cloud_ptr_current = thing_to_cloud(feature_extraction->cornerCloud, "map");
     pub_ptr_corner_cloud_current_->publish(*corner_cloud_ptr_current);
 
-    auto surface_cloud_ptr_current = thing_to_cloud(feature_extraction->cornerCloud, "map");
+    auto surface_cloud_ptr_current = thing_to_cloud(feature_extraction->surfaceCloud, "map");
     pub_ptr_surface_cloud_current_->publish(*surface_cloud_ptr_current);
 
 

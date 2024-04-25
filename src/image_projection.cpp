@@ -5,18 +5,29 @@
 
 namespace loam_mapper::image_projection
 {
-ImageProjection::ImageProjection() {
-  cloudInfo.point_col_index.resize(28800);
-  cloudInfo.start_ring_index.resize(28800);
-  cloudInfo.end_ring_index.resize(28800);
-  cloudInfo.point_range.resize(28800);
+ImageProjection::ImageProjection()
+{
+  allocateMemory();
+  resetParameters();
 }
 
+// void ImageProjection::setLaserCloudIn(const Points & cloud) {
+//   laserCloudIn.resize(cloud.size());
+//   laserCloudIn = cloud;
+// }
 
-//void ImageProjection::setLaserCloudIn(const Points & cloud) {
-//  laserCloudIn.resize(cloud.size());
-//  laserCloudIn = cloud;
-//}
+void ImageProjection::allocateMemory()
+{
+  fullCloud.resize(16*1800);
+
+  cloudInfo.start_ring_index.assign(16, 0);
+  cloudInfo.end_ring_index.assign(16, 0);
+
+  cloudInfo.point_col_index.assign(16*1800, 0);
+  cloudInfo.point_range.assign(16*1800, 0);
+
+  resetParameters();
+}
 
 void ImageProjection::imuHandler(const sensor_msgs::msg::Imu imuMsg)
 {
@@ -37,7 +48,6 @@ void ImageProjection::cloudHandler(Points & laserCloudMsg)
   projectPointCloud(laserCloudMsg);
 
   cloudExtraction(laserCloudMsg);
-
 }
 
 void ImageProjection::cachePointCloud(Points & laserCloudMsg)
@@ -58,6 +68,8 @@ void ImageProjection::projectPointCloud(Points & laserCloudMsg)
     thisPoint.y = laserCloudMsg[i].y;
     thisPoint.z = laserCloudMsg[i].z;
     thisPoint.intensity = laserCloudMsg[i].intensity;
+    thisPoint.horizontal_angle = laserCloudMsg[i].horizontal_angle;
+    thisPoint.ring = laserCloudMsg[i].ring;
 
     float range =
       sqrt(thisPoint.x * thisPoint.x + thisPoint.y * thisPoint.y + thisPoint.z * thisPoint.z);
@@ -70,11 +82,8 @@ void ImageProjection::projectPointCloud(Points & laserCloudMsg)
 
     int columnIdn = -1;
     float horizonAngle = laserCloudMsg[i].horizontal_angle;
-    std::cout << "range: " << range << std::endl;
-    std::cout << "horizonAngle: " << horizonAngle << std::endl;
-    std::cout << "ring: " << rowIdn << "\n" << std::endl;
     static float ang_res_x = 360.0 / float(1800);
-    columnIdn = -round((horizonAngle-90.0) / ang_res_x) + 900;
+    columnIdn = -round((horizonAngle - 90.0) / ang_res_x) + 900;
     //                RCLCPP_INFO(this->get_logger(), "columnIdn: %d", columnIdn);
     if (columnIdn >= 1800) columnIdn -= 1800;
 
@@ -83,67 +92,55 @@ void ImageProjection::projectPointCloud(Points & laserCloudMsg)
     // project the point cloud into 2d projection. make a depth map from it.
     if (rangeMat.at<float>(rowIdn, columnIdn) != FLT_MAX) continue;
 
-//    thisPoint = deskewPoint(&thisPoint, laserCloudIn->points[i].time);
+    //    thisPoint = deskewPoint(&thisPoint, laserCloudIn->points[i].time);
 
     rangeMat.at<float>(rowIdn, columnIdn) = range;
 
-    int index = columnIdn + rowIdn * 1800;
     fullCloud.push_back(thisPoint);
   }
 }
 
-void ImageProjection::cloudExtraction(Points & laserCloudMsg) {
+void ImageProjection::cloudExtraction(Points & laserCloudMsg)
+{
   int count = 0;
   // extract segmented cloud for lidar odometry
-//  std::cout << laserCloudMsg.size() << std::endl;
-  for (int i = 0; i < 16; ++i)
-  {
-
+  //  std::cout << laserCloudMsg.size() << std::endl;
+  for (int i = 0; i < 16; ++i) {
     cloudInfo.start_ring_index[i] = count - 1 + 5;
-    for (int j = 0; j < 1800; ++j)
-    {
-      if (rangeMat.at<float>(i,j) != FLT_MAX)
-      {
-//        std::cout << "i: " << i << "\tj: " << j << std::endl;
+    for (int j = 0; j < 1800; ++j) {
+      if (rangeMat.at<float>(i, j) != FLT_MAX) {
         // mark the points' column index for marking occlusion later
         cloudInfo.point_col_index[count] = j;
         // save range info
-        cloudInfo.point_range[count] = rangeMat.at<float>(i,j);
+        cloudInfo.point_range[count] = rangeMat.at<float>(i, j);
         // save extracted cloud
-        extractedCloud.push_back(laserCloudMsg[j + i*1800]);
+        extractedCloud.push_back(laserCloudMsg[j + i * 1800]);
         // size of extracted cloud
         ++count;
-//        std::cout << "count: " << count << " - " << cloudInfo.point_range[count] << std::endl;
-//        std::cout << "count: " << count << " - " << rangeMat.at<float>(i,j) << std::endl;
-
       }
     }
-    cloudInfo.end_ring_index[i] = count -1 - 5;
+    cloudInfo.end_ring_index[i] = count - 1 - 5;
   }
-//  for (auto start : cloudInfo.start_ring_index) {
-//    if (start != 0) {
-//    }
-//  }
 }
 
 void ImageProjection::resetParameters()
 {
-//  laserCloudIn.clear();
+  //  laserCloudIn.clear();
   extractedCloud.clear();
   // reset range matrix for range image projection
   rangeMat = cv::Mat(16, 1800, CV_32F, cv::Scalar::all(FLT_MAX));
 
-//  imuPointerCur = 0;
-//  firstPointFlag = true;
-//  odomDeskewFlag = false;
-//
-//  for (int i = 0; i < queueLength; ++i)
-//  {
-//    imuTime[i] = 0;
-//    imuRotX[i] = 0;
-//    imuRotY[i] = 0;
-//    imuRotZ[i] = 0;
-//  }
+  //  imuPointerCur = 0;
+  //  firstPointFlag = true;
+  //  odomDeskewFlag = false;
+  //
+  //  for (int i = 0; i < queueLength; ++i)
+  //  {
+  //    imuTime[i] = 0;
+  //    imuRotX[i] = 0;
+  //    imuRotY[i] = 0;
+  //    imuRotZ[i] = 0;
+  //  }
 }
 
 }  // namespace loam_mapper::image_projection
