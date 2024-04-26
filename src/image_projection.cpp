@@ -31,6 +31,8 @@ void ImageProjection::allocateMemory()
 
 void ImageProjection::imuHandler(const sensor_msgs::msg::Imu imuMsg)
 {
+//  sensor_msgs::msg::Imu thisImu = imuConverter(imuMsg);
+
   std::lock_guard<std::mutex> lock1(imuLock);
   imuQueue.push_back(imuMsg);
 }
@@ -48,6 +50,10 @@ void ImageProjection::cloudHandler(Points & laserCloudMsg)
   projectPointCloud(laserCloudMsg);
 
   cloudExtraction(laserCloudMsg);
+
+
+
+
 }
 
 void ImageProjection::cachePointCloud(Points & laserCloudMsg)

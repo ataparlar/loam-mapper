@@ -4,12 +4,14 @@
 
 #include "csv.hpp"
 
-#include <geometry_msgs/msg/pose_with_covariance.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance.hpp>
+#include <sensor_msgs/msg/imu.hpp>
 
 #include <boost/filesystem.hpp>
-#include <string>
+
 #include <memory>
+#include <string>
 
 namespace loam_mapper::transform_provider
 {
@@ -33,9 +35,9 @@ public:
 
   std::vector<Pose> poses_;
 
-  Pose get_pose_at(
-    uint32_t stamp_unix_seconds,
-    uint32_t stamp_nanoseconds);
+  Pose get_pose_at(uint32_t stamp_unix_seconds, uint32_t stamp_nanoseconds);
+
+  sensor_msgs::msg::Imu get_imu_at(uint32_t stamp_unix_seconds, uint32_t stamp_nanoseconds);
 
 private:
   fs::path path_file_ascii_output_;
@@ -44,6 +46,6 @@ private:
   int data_line_number;
   std::string mission_date;
 };
-}  // loam_mapper::transform_provider
+}  // namespace loam_mapper::transform_provider
 
 #endif  // BUILD_TRANSFORM_PROVIDER_HPP

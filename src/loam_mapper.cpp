@@ -139,17 +139,9 @@ void LoamMapper::process()
             .toRotationMatrix();
 
         if (enable_ned2enu_) {
-          Eigen::Affine3d ned2enu(Eigen::Affine3d::Identity());
-          ned2enu.matrix().topLeftCorner<3, 3>() =
-            Eigen::AngleAxisd(utils::Utils::deg_to_rad(-90.0), Eigen::Vector3d::UnitZ())
-              .toRotationMatrix() *
-            Eigen::AngleAxisd(utils::Utils::deg_to_rad(0.0), Eigen::Vector3d::UnitY())
-              .toRotationMatrix() *
-            Eigen::AngleAxisd(utils::Utils::deg_to_rad(180.0), Eigen::Vector3d::UnitX())
-              .toRotationMatrix();
-
-          Eigen::Affine3d affine_imu2lidar_enu(Eigen::Affine3d::Identity());
-          affine_imu2lidar_enu = affine_imu2lidar.matrix() * ned2enu.matrix();
+          Eigen::Affine3d affine_imu2lidar_enu;
+          affine_imu2lidar_enu.matrix().topLeftCorner<3, 3>()
+            = utils::Utils::ned2enu_converter(affine_imu2lidar.matrix().topLeftCorner<3, 3>());
 
           affine_sensor2map.matrix().topLeftCorner<3, 3>() =
             quat.toRotationMatrix() * affine_imu2lidar_enu.rotation();
@@ -194,7 +186,7 @@ void LoamMapper::process()
     cloud_all_surface_.insert(
       cloud_all_surface_.end(), feature_extraction->surfaceCloud.begin(),
       feature_extraction->surfaceCloud.end());
-    std::this_thread::sleep_for(std::chrono::milliseconds(180));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     auto cloud_ptr_current = thing_to_cloud(cloud_trans, "map");
     pub_ptr_basic_cloud_current_->publish(*cloud_ptr_current);
     pub_ptr_image_->publish(image);

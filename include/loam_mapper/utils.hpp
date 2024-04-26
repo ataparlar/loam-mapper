@@ -8,6 +8,8 @@
 #include <type_traits>
 #include <vector>
 #include <rclcpp/rclcpp.hpp>
+#include "sensor_msgs/msg/imu.hpp"
+#include <Eigen/Geometry>
 
 namespace loam_mapper::utils
 {
@@ -36,6 +38,8 @@ public:
   {
     return rclcpp::Clock().now();
   }
+
+  static Eigen::Matrix3d ned2enu_converter(const Eigen::Matrix3d & matrix3d);
 
   struct CloudInfo
   {

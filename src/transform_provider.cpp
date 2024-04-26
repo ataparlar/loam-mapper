@@ -1,20 +1,22 @@
 #include "loam_mapper/transform_provider.hpp"
+
 #include "loam_mapper/csv.hpp"
-#include <string>
-#include <array>
-#include <sstream>
-#include <exception>
-#include <algorithm>
-#include <iostream>
-#include <Eigen/Geometry>
-#include <GeographicLib/LocalCartesian.hpp>
 #include "loam_mapper/date.h"
 #include "loam_mapper/utils.hpp"
 
+#include <Eigen/Geometry>
+#include <GeographicLib/LocalCartesian.hpp>
+
+#include <algorithm>
+#include <array>
+#include <exception>
+#include <iostream>
+#include <sstream>
+#include <string>
+
 namespace loam_mapper::transform_provider
 {
-TransformProvider::TransformProvider(
-  const std::string & path_file_ascii_output)
+TransformProvider::TransformProvider(const std::string & path_file_ascii_output)
 : path_file_ascii_output_(path_file_ascii_output)
 {
   if (!fs::exists(path_file_ascii_output_)) {
@@ -49,7 +51,7 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
   std::string temp_pose_file = "temp_pose_file.csv";
   {
     std::ifstream filein(path_file_ascii_output_.string());  // File to read from
-    std::ofstream fileout(temp_pose_file);    // Temporary file
+    std::ofstream fileout(temp_pose_file);                   // Temporary file
     if (!filein || !fileout) {
       // throw exception
       throw(std::runtime_error("Error opening file"));
@@ -161,12 +163,22 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       pose.pose_with_covariance.pose.position.set__x(in.easting - origin_x);
       pose.pose_with_covariance.pose.position.set__y(in.northing - origin_y);
       pose.pose_with_covariance.pose.position.set__z(in.ellipsoid_height - origin_z);
-      Eigen::AngleAxisd angle_axis_x(utils::Utils::deg_to_rad(in.roll), Eigen::Vector3d::UnitY());
-      Eigen::AngleAxisd angle_axis_y(utils::Utils::deg_to_rad(in.pitch), Eigen::Vector3d::UnitX());
-      Eigen::AngleAxisd angle_axis_z(
-        utils::Utils::deg_to_rad(-in.heading), Eigen::Vector3d::UnitZ());
+//      Eigen::AngleAxisd angle_axis_x(utils::Utils::deg_to_rad(in.roll), Eigen::Vector3d::UnitY());
+//      Eigen::AngleAxisd angle_axis_y(utils::Utils::deg_to_rad(in.pitch), Eigen::Vector3d::UnitX());
+//      Eigen::AngleAxisd angle_axis_z(
+//        utils::Utils::deg_to_rad(-in.heading), Eigen::Vector3d::UnitZ());
 
-      Eigen::Quaterniond q = (angle_axis_z * angle_axis_y * angle_axis_x);
+      Eigen::AngleAxisd angle_axis_x(utils::Utils::deg_to_rad(in.roll), Eigen::Vector3d::UnitX());
+      Eigen::AngleAxisd angle_axis_y(utils::Utils::deg_to_rad(in.pitch), Eigen::Vector3d::UnitY());
+      Eigen::AngleAxisd angle_axis_z(
+        utils::Utils::deg_to_rad(in.heading), Eigen::Vector3d::UnitZ());
+
+      Eigen::Matrix3d orientation_ned(angle_axis_x * angle_axis_y * angle_axis_z);
+
+      Eigen::Matrix3d orientation_enu = utils::Utils::ned2enu_converter(orientation_ned);
+
+//      Eigen::Quaterniond q = (angle_axis_z * angle_axis_y * angle_axis_x);
+      Eigen::Quaterniond q(orientation_enu);
       pose.pose_with_covariance.pose.orientation.set__x(q.x());
       pose.pose_with_covariance.pose.orientation.set__y(q.y());
       pose.pose_with_covariance.pose.orientation.set__z(q.z());
@@ -212,15 +224,13 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
 }
 
 TransformProvider::Pose TransformProvider::get_pose_at(
-  uint32_t stamp_unix_seconds,
-  uint32_t stamp_nanoseconds)
+  uint32_t stamp_unix_seconds, uint32_t stamp_nanoseconds)
 {
   Pose pose_search;
   pose_search.stamp_unix_seconds = stamp_unix_seconds;
   pose_search.stamp_nanoseconds = stamp_nanoseconds;
   auto iter_result = std::lower_bound(
-    poses_.begin(), poses_.end(), pose_search,
-    [](const Pose & p1, const Pose & p2) {
+    poses_.begin(), poses_.end(), pose_search, [](const Pose & p1, const Pose & p2) {
       if (p1.stamp_unix_seconds == p2.stamp_unix_seconds) {
         return p1.stamp_nanoseconds < p2.stamp_nanoseconds;
       }
@@ -232,4 +242,32 @@ TransformProvider::Pose TransformProvider::get_pose_at(
   return poses_.at(index);
 }
 
-}  // loam_mapper::transform_provider
+sensor_msgs::msg::Imu TransformProvider::get_imu_at(
+  uint32_t stamp_unix_seconds, uint32_t stamp_nanoseconds)
+{
+  Pose pose = get_pose_at(stamp_unix_seconds, stamp_nanoseconds);
+
+  Eigen::Quaterniond q(
+    pose.pose_with_covariance.pose.orientation.w,
+    pose.pose_with_covariance.pose.orientation.x,
+    pose.pose_with_covariance.pose.orientation.y,
+    pose.pose_with_covariance.pose.orientation.z);
+
+  Eigen::Matrix3d converted_matrix;
+  converted_matrix = utils::Utils::ned2enu_converter(q.toRotationMatrix());
+
+  Eigen::Quaterniond converted_q(converted_matrix);
+
+  sensor_msgs::msg::Imu converted_imu;
+  converted_imu.orientation.set__x(converted_q.w());
+  converted_imu.orientation.set__x(converted_q.x());
+  converted_imu.orientation.set__y(converted_q.y());
+  converted_imu.orientation.set__z(converted_q.z());
+
+
+
+
+  return converted_imu;
+}
+
+}  // namespace loam_mapper::transform_provider
