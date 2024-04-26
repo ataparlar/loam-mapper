@@ -264,7 +264,7 @@ void ContinuousPacketParser::process_packet_into_cloud(
         }
       }
 
-      bool is_close_to_cut_area = std::abs(angle_deg_azimuth_last - angle_deg_cut_) < 4.0f;
+      bool is_close_to_cut_area = std::abs(angle_deg_azimuth_last - angle_deg_cut_) < 3.0f;
 
       if (!is_close_to_cut_area) {
         can_publish_again_ = true;

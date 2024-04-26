@@ -55,8 +55,6 @@ private:
   rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_surface_cloud_current_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_ptr_path_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub_ptr_image_;
-  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_ptr_marker_corner_;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_ptr_marker_surface_;
 
   transform_provider::TransformProvider::SharedPtr transform_provider;
   points_provider::PointsProvider::SharedPtr points_provider;

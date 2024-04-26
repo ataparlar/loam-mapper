@@ -100,7 +100,6 @@ void FeatureExtraction::markOccludedPoints(utils::Utils::CloudInfo & cloudInfo)
 void FeatureExtraction::extractFeatures(
   utils::Utils::CloudInfo & cloudInfo, float edgeThreshold, float surfaceThreshold)
 {
-  marker_corner.points.clear();
   cornerCloud.clear();
   surfaceCloud.clear();
 
@@ -161,7 +160,7 @@ void FeatureExtraction::extractFeatures(
 
 
 
-      for (int k = sp; k <= ep; k++) {
+      for (int k = sp; k <= ep; k++) {  // find surface points
         int ind = cloudSmoothness[k].ind;
         if (cloudNeighborPicked[ind] == 0 && cloudCurvature[ind] < surfaceThreshold) {
           cloudLabel[ind] = -1;
@@ -189,7 +188,6 @@ void FeatureExtraction::extractFeatures(
           surfaceCloudScan.push_back(extractedCloud[k]);
         }
       }
-      //      std::cout << "\n" << std::endl;
     }
 
     //    downSizeFilter.setInputCloud(surfaceCloudScan);
@@ -198,7 +196,6 @@ void FeatureExtraction::extractFeatures(
     surfaceCloud.insert(surfaceCloud.end(), surfaceCloudScan.begin(), surfaceCloudScan.end());
     surfaceCloudScanDS.clear();
   }
-//  marker_counter++;
 }
 
 void FeatureExtraction::freeCloudInfoMemory(utils::Utils::CloudInfo & cloudInfo)

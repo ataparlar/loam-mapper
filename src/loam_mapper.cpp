@@ -60,8 +60,6 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   pub_ptr_surface_cloud_current_ = this->create_publisher<PointCloud2>("surface_cloud_current", 10);
   pub_ptr_path_ = this->create_publisher<nav_msgs::msg::Path>("vehicle_path", 10);
   pub_ptr_image_ = this->create_publisher<sensor_msgs::msg::Image>("rangeMat", 10);
-  pub_ptr_marker_corner_ =
-    this->create_publisher<visualization_msgs::msg::Marker>("marker_array_corner", 10);
 
   transform_provider = std::make_shared<transform_provider::TransformProvider>(
     "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/"
@@ -179,56 +177,12 @@ void LoamMapper::process()
 
     //    image_projection->setLaserCloudIn(cloud_trans);
     image_projection->cloudHandler(cloud_trans);
-    //    sensor_msgs::msg::Image image = createImageFromRangeMat(image_projection->rangeMat);
+    sensor_msgs::msg::Image image = createImageFromRangeMat(image_projection->rangeMat);
 
     feature_extraction->laserCloudInfoHandler(cloud_trans, image_projection->cloudInfo);
 
     auto corner_cloud_ptr_current = thing_to_cloud(feature_extraction->cornerCloud, "map");
     pub_ptr_corner_cloud_current_->publish(*corner_cloud_ptr_current);
-
-    for (auto & point1 : feature_extraction->cornerCloud) {
-      for (auto & point2 : feature_extraction->cornerCloud) {
-        if (
-          std::sqrt(
-            std::pow(point1.x - point2.x, 2) + std::pow(point1.y - point2.y, 2) +
-            std::pow(point1.z - point2.z, 2)) < 1.0) {
-          feature_extraction->marker_corner.header.stamp = utils::Utils::get_time();
-          feature_extraction->marker_corner.header.frame_id = "map";
-          feature_extraction->marker_corner.color.r = 1.0;
-          feature_extraction->marker_corner.color.g = 0.0;
-          feature_extraction->marker_corner.color.b = 0.0;
-          feature_extraction->marker_corner.color.a = 1.0;
-          feature_extraction->marker_corner.action = visualization_msgs::msg::Marker::ADD;
-          feature_extraction->marker_corner.ns = "corner_lines";
-          feature_extraction->marker_corner.scale.x = 0.02;
-          feature_extraction->marker_corner.scale.y = 0.02;
-          feature_extraction->marker_corner.type = visualization_msgs::msg::Marker::LINE_LIST;
-          feature_extraction->marker_corner.id = feature_extraction->marker_counter;
-          geometry_msgs::msg::Point p1;
-          p1.x = point1.x;
-          p1.y = point1.y;
-          p1.z = point1.z;
-          feature_extraction->marker_corner.points.push_back(p1);
-          geometry_msgs::msg::Point p2;
-          p2.x = point2.x;
-          p2.y = point2.y;
-          p2.z = point2.z;
-          feature_extraction->marker_corner.points.push_back(p2);
-          feature_extraction->marker_counter++;
-        }
-      }
-    }
-
-    if (feature_extraction->marker_corner.points.size() % 2 == 1) {
-      feature_extraction->marker_corner.points.pop_back();
-    }
-    //    feature_extraction->markerArray_corner.markers.push_back(feature_extraction->marker_corner);
-    //    if (feature_extraction->markerArray_corner.markers.size() > 10) {
-    //      feature_extraction->markerArray_corner.markers.pop;
-    //    }
-    //    std::cout << "feature_extraction->markerArray_corner.markers.size(): "
-    //              << feature_extraction->markerArray_corner.markers.size() << std::endl;
-    pub_ptr_marker_corner_->publish(feature_extraction->marker_corner);
 
     auto surface_cloud_ptr_current = thing_to_cloud(feature_extraction->surfaceCloud, "map");
     pub_ptr_surface_cloud_current_->publish(*surface_cloud_ptr_current);
@@ -240,7 +194,10 @@ void LoamMapper::process()
     cloud_all_surface_.insert(
       cloud_all_surface_.end(), feature_extraction->surfaceCloud.begin(),
       feature_extraction->surfaceCloud.end());
-    //    pub_ptr_image_->publish(image);
+    std::this_thread::sleep_for(std::chrono::milliseconds(180));
+    auto cloud_ptr_current = thing_to_cloud(cloud_trans, "map");
+    pub_ptr_basic_cloud_current_->publish(*cloud_ptr_current);
+    pub_ptr_image_->publish(image);
 
     image_projection->resetParameters();
   }

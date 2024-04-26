@@ -83,8 +83,7 @@ void ImageProjection::projectPointCloud(Points & laserCloudMsg)
     int columnIdn = -1;
     float horizonAngle = laserCloudMsg[i].horizontal_angle;
     static float ang_res_x = 360.0 / float(1800);
-    columnIdn = -round((horizonAngle - 180) / ang_res_x) + 900;
-    //                RCLCPP_INFO(this->get_logger(), "columnIdn: %d", columnIdn);
+    columnIdn = round((horizonAngle) / ang_res_x);
     if (columnIdn >= 1800) columnIdn -= 1800;
 
     if (columnIdn < 0 || columnIdn >= 1800) continue;

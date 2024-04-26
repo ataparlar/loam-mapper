@@ -41,19 +41,11 @@ public:
   using SharedPtr = std::shared_ptr<FeatureExtraction>;
   using ConstSharedPtr = const SharedPtr;
 
-
   explicit FeatureExtraction();
 
   Points extractedCloud;
   Points cornerCloud;
   Points surfaceCloud;
-
-  size_t marker_counter = 1;
-  visualization_msgs::msg::Marker marker_corner;
-  visualization_msgs::msg::MarkerArray markerArray_corner;
-  visualization_msgs::msg::Marker marker_surface;
-  visualization_msgs::msg::MarkerArray markerArray_surface;
-
 
   std::vector<smoothness_t> cloudSmoothness;
   float * cloudCurvature;
