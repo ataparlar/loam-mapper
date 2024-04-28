@@ -32,8 +32,15 @@ public:
     uint32_t stamp_nanoseconds{0U};
     geometry_msgs::msg::PoseWithCovariance pose_with_covariance;
   };
+  struct Imu
+  {
+    uint32_t stamp_unix_seconds{0U};
+    uint32_t stamp_nanoseconds{0U};
+    sensor_msgs::msg::Imu imu;
+  };
 
   std::vector<Pose> poses_;
+  std::vector<Imu> imu_rotations;
 
   Pose get_pose_at(uint32_t stamp_unix_seconds, uint32_t stamp_nanoseconds);
 

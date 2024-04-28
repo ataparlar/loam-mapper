@@ -160,6 +160,7 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       in.y_acceleration, in.z_acceleration, in.east_std, in.north_std, in.height_std, in.roll_std,
       in.pitch_std, in.heading_std)) {
       Pose pose;
+      Imu imu;
       pose.pose_with_covariance.pose.position.set__x(in.easting - origin_x);
       pose.pose_with_covariance.pose.position.set__y(in.northing - origin_y);
       pose.pose_with_covariance.pose.position.set__z(in.ellipsoid_height - origin_z);
@@ -183,6 +184,7 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       pose.pose_with_covariance.pose.orientation.set__y(q.y());
       pose.pose_with_covariance.pose.orientation.set__z(q.z());
       pose.pose_with_covariance.pose.orientation.set__w(q.w());
+      imu.imu.orientation = pose.pose_with_covariance.pose.orientation;
 
       auto segments = utils::Utils::string_to_vec_split_by(mission_date, '/');
 
@@ -259,13 +261,26 @@ sensor_msgs::msg::Imu TransformProvider::get_imu_at(
   Eigen::Quaterniond converted_q(converted_matrix);
 
   sensor_msgs::msg::Imu converted_imu;
+
+//  converted_imu.header.frame_id = "map";
+//  converted_imu.header.stamp = utils::Utils::get_time();
+
   converted_imu.orientation.set__x(converted_q.w());
   converted_imu.orientation.set__x(converted_q.x());
   converted_imu.orientation.set__y(converted_q.y());
   converted_imu.orientation.set__z(converted_q.z());
 
+  converted_imu.angular_velocity.set__x(0);
+  converted_imu.angular_velocity.set__y(0);
+  converted_imu.angular_velocity.set__z(0);
 
+//  converted_imu.angular_velocity_covariance
 
+  converted_imu.linear_acceleration.set__x(0);
+  converted_imu.linear_acceleration.set__y(0);
+  converted_imu.linear_acceleration.set__z(0);
+
+//  converted_imu.linear_acceleration_covariance
 
   return converted_imu;
 }
