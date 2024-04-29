@@ -2,6 +2,7 @@
 #include "loam_mapper/loam_mapper.hpp"
 
 #include "loam_mapper/Occtree.h"
+#include "pcl/common/transforms.h"
 
 #include <Eigen/Geometry>
 #include <loam_mapper/point_types.hpp>
@@ -109,13 +110,14 @@ void LoamMapper::process()
 
   for (auto & cloud : clouds) {
     //    utils::Utils::CloudInfo cloudInfo;
+    bool firstPointFlag = true;
 
     points_provider::PointsProvider::Points cloud_trans;
     cloud_trans.resize(cloud.size());
 
     std::transform(
       std::execution::par, cloud.cbegin(), cloud.cend(), cloud_trans.begin(),
-      [this, &path_](const points_provider::PointsProvider::Point & point) {
+      [this, &path_, &firstPointFlag](const points_provider::PointsProvider::Point & point) {
         points_provider::PointsProvider::Point point_trans;
         loam_mapper::transform_provider::TransformProvider::Pose pose =
           this->transform_provider->get_pose_at(point.stamp_unix_seconds, point.stamp_nanoseconds);
@@ -140,8 +142,9 @@ void LoamMapper::process()
 
         if (enable_ned2enu_) {
           Eigen::Affine3d affine_imu2lidar_enu;
-          affine_imu2lidar_enu.matrix().topLeftCorner<3, 3>()
-            = utils::Utils::ned2enu_converter(affine_imu2lidar.matrix().topLeftCorner<3, 3>());
+          affine_imu2lidar_enu.matrix().topLeftCorner<3, 3>() =
+            utils::Utils::ned2enu_converter_for_matrices(
+              affine_imu2lidar.matrix().topLeftCorner<3, 3>());
 
           affine_sensor2map.matrix().topLeftCorner<3, 3>() =
             quat.toRotationMatrix() * affine_imu2lidar_enu.rotation();
@@ -150,6 +153,7 @@ void LoamMapper::process()
           affine_sensor2map.matrix().topLeftCorner<3, 3>() =
             quat.toRotationMatrix() * affine_imu2lidar.rotation();
         }
+
 
         auto & pose_pos = pose_stamped.pose.position;
         affine_sensor2map.matrix().topRightCorner<3, 1>() << pose_pos.x, pose_pos.y, pose_pos.z;
@@ -163,12 +167,48 @@ void LoamMapper::process()
         point_trans.ring = point.ring;
         point_trans.horizontal_angle = point.horizontal_angle;
         point_trans.intensity = point.intensity;
+        point_trans.stamp_unix_seconds = point.stamp_unix_seconds;
+        point_trans.stamp_nanoseconds = point.stamp_nanoseconds;
+
+//        if (firstPointFlag == true) {
+//          transStartInverse =
+//            (pcl::getTransformation(
+//               pose.pose_with_covariance.pose.position.x, pose.pose_with_covariance.pose.position.y,
+//               pose.pose_with_covariance.pose.position.z,
+//               quat.toRotationMatrix().eulerAngles(0, 1, 2)[0],
+//               quat.toRotationMatrix().eulerAngles(0, 1, 2)[1],
+//               quat.toRotationMatrix().eulerAngles(0, 1, 2)[2]))
+//              .inverse();
+//          firstPointFlag = false;
+//        }
+//
+//        // transform points to start
+//        Eigen::Affine3f transFinal = pcl::getTransformation(
+//          pose.pose_with_covariance.pose.position.x, pose.pose_with_covariance.pose.position.y,
+//          pose.pose_with_covariance.pose.position.z,
+//          quat.toRotationMatrix().eulerAngles(0, 1, 2)[0],
+//          quat.toRotationMatrix().eulerAngles(0, 1, 2)[1],
+//          quat.toRotationMatrix().eulerAngles(0, 1, 2)[2]);
+//        Eigen::Affine3f transBt = transStartInverse * transFinal;
+//
+//        points_provider::PointsProviderBase::Point point_deskewed;
+//        point_deskewed.x = transBt(0, 0) * point_trans.x + transBt(0, 1) * point_trans.y + transBt(0, 2) * point_trans.z +
+//                   transBt(0, 3);
+//        point_deskewed.y = transBt(1, 0) * point_trans.x + transBt(1, 1) * point_trans.y + transBt(1, 2) * point_trans.z +
+//                   transBt(1, 3);
+//        point_deskewed.z = transBt(2, 0) * point_trans.x + transBt(2, 1) * point_trans.y + transBt(2, 2) * point_trans.z +
+//                   transBt(2, 3);
+//        point_deskewed.intensity = point_trans.intensity;
+//        point_deskewed.stamp_unix_seconds = point_trans.stamp_unix_seconds;
+//        point_deskewed.stamp_nanoseconds = point_trans.stamp_nanoseconds;
+//        point_deskewed.ring = point_trans.ring;
+//        point_deskewed.horizontal_angle = point_trans.horizontal_angle;
 
         return point_trans;
       });
 
     //    image_projection->setLaserCloudIn(cloud_trans);
-    image_projection->cloudHandler(cloud_trans);
+    image_projection->cloudHandler(cloud_trans, transform_provider);
     sensor_msgs::msg::Image image = createImageFromRangeMat(image_projection->rangeMat);
 
     feature_extraction->laserCloudInfoHandler(cloud_trans, image_projection->cloudInfo);

@@ -39,7 +39,7 @@ public:
     return rclcpp::Clock().now();
   }
 
-  static Eigen::Matrix3d ned2enu_converter(const Eigen::Matrix3d & matrix3d);
+  static Eigen::Matrix3d ned2enu_converter_for_matrices(const Eigen::Matrix3d & matrix3d);
 
   struct CloudInfo
   {

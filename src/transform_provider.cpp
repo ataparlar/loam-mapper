@@ -164,19 +164,13 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       pose.pose_with_covariance.pose.position.set__x(in.easting - origin_x);
       pose.pose_with_covariance.pose.position.set__y(in.northing - origin_y);
       pose.pose_with_covariance.pose.position.set__z(in.ellipsoid_height - origin_z);
-//      Eigen::AngleAxisd angle_axis_x(utils::Utils::deg_to_rad(in.roll), Eigen::Vector3d::UnitY());
-//      Eigen::AngleAxisd angle_axis_y(utils::Utils::deg_to_rad(in.pitch), Eigen::Vector3d::UnitX());
-//      Eigen::AngleAxisd angle_axis_z(
-//        utils::Utils::deg_to_rad(-in.heading), Eigen::Vector3d::UnitZ());
-
-      Eigen::AngleAxisd angle_axis_x(utils::Utils::deg_to_rad(in.roll), Eigen::Vector3d::UnitX());
-      Eigen::AngleAxisd angle_axis_y(utils::Utils::deg_to_rad(in.pitch), Eigen::Vector3d::UnitY());
+      Eigen::AngleAxisd angle_axis_x(utils::Utils::deg_to_rad(in.roll), Eigen::Vector3d::UnitY());
+      Eigen::AngleAxisd angle_axis_y(utils::Utils::deg_to_rad(in.pitch), Eigen::Vector3d::UnitX());
       Eigen::AngleAxisd angle_axis_z(
-        utils::Utils::deg_to_rad(in.heading), Eigen::Vector3d::UnitZ());
+        utils::Utils::deg_to_rad(-in.heading), Eigen::Vector3d::UnitZ());
 
-      Eigen::Matrix3d orientation_ned(angle_axis_x * angle_axis_y * angle_axis_z);
+      Eigen::Matrix3d orientation_enu(angle_axis_x * angle_axis_y * angle_axis_z);
 
-      Eigen::Matrix3d orientation_enu = utils::Utils::ned2enu_converter(orientation_ned);
 
 //      Eigen::Quaterniond q = (angle_axis_z * angle_axis_y * angle_axis_x);
       Eigen::Quaterniond q(orientation_enu);
@@ -184,7 +178,31 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       pose.pose_with_covariance.pose.orientation.set__y(q.y());
       pose.pose_with_covariance.pose.orientation.set__z(q.z());
       pose.pose_with_covariance.pose.orientation.set__w(q.w());
-      imu.imu.orientation = pose.pose_with_covariance.pose.orientation;
+      imu.imu.orientation.set__x(q.x());
+      imu.imu.orientation.set__y(q.y());
+      imu.imu.orientation.set__z(q.z());
+      imu.imu.orientation.set__w(q.w());
+
+      imu.imu.linear_acceleration.set__x(in.y_acceleration);
+      imu.imu.linear_acceleration.set__y(in.x_acceleration);
+      imu.imu.linear_acceleration.set__z(-in.z_acceleration);
+//      imu.imu.linear_acceleration_covariance
+      std::array<double, 3> linear_acc_variances{
+        std::pow(in.north_std, 2),  std::pow(in.east_std, 2), std::pow(-in.heading_std, 2),
+      };
+      for (size_t i = 0; i < 3; ++i) {
+        imu.imu.linear_acceleration_covariance.at(i*4) = linear_acc_variances.at(i);
+      }
+
+      imu.imu.angular_velocity.set__x(in.y_angular_rate);
+      imu.imu.angular_velocity.set__y(in.x_angular_rate);
+      imu.imu.angular_velocity.set__z(-in.z_angular_rate);
+      std::array<double, 3> angular_rate_variances{
+        std::pow(in.pitch_std, 2),  std::pow(in.roll_std, 2), std::pow(-in.heading_std, 2),
+      };
+      for (size_t i = 0; i < 3; ++i) {
+        imu.imu.linear_acceleration_covariance.at(i*4) = linear_acc_variances.at(i);
+      }
 
       auto segments = utils::Utils::string_to_vec_split_by(mission_date, '/');
 
@@ -203,6 +221,9 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       pose.stamp_unix_seconds = std::chrono::seconds(tp.time_since_epoch()).count();
       pose.stamp_nanoseconds = std::chrono::nanoseconds(time_since_midnight.subseconds()).count();
 
+      imu.stamp_unix_seconds = pose.stamp_unix_seconds;
+      imu.stamp_nanoseconds = pose.stamp_nanoseconds;
+
       std::array<double, 6> variances{
         std::pow(in.north_std, 2), std::pow(in.east_std, 2),  std::pow(in.height_std, 2),
         std::pow(in.roll_std, 2),  std::pow(in.pitch_std, 2), std::pow(in.heading_std, 2),
@@ -219,6 +240,7 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
         pose.pose_with_covariance.covariance.at(i * 7) = variances.at(i);
       }
       poses_.push_back(pose);
+      imu_rotations_.push_back(imu);
     }
   } catch (const std::exception & ex) {
     std::cerr << "Probably empty lines at the end of csv, no problems: " << ex.what() << std::endl;
@@ -244,45 +266,24 @@ TransformProvider::Pose TransformProvider::get_pose_at(
   return poses_.at(index);
 }
 
-sensor_msgs::msg::Imu TransformProvider::get_imu_at(
+TransformProvider::Imu TransformProvider::get_imu_at(
   uint32_t stamp_unix_seconds, uint32_t stamp_nanoseconds)
 {
-  Pose pose = get_pose_at(stamp_unix_seconds, stamp_nanoseconds);
+  Imu imu_search;
 
-  Eigen::Quaterniond q(
-    pose.pose_with_covariance.pose.orientation.w,
-    pose.pose_with_covariance.pose.orientation.x,
-    pose.pose_with_covariance.pose.orientation.y,
-    pose.pose_with_covariance.pose.orientation.z);
+  imu_search.stamp_unix_seconds = stamp_unix_seconds;
+  imu_search.stamp_nanoseconds = stamp_nanoseconds;
+  auto iter_result = std::lower_bound(
+    imu_rotations_.begin(), imu_rotations_.end(), imu_search, [](const Imu & p1, const Imu & p2) {
+      if (p1.stamp_unix_seconds == p2.stamp_unix_seconds) {
+        return p1.stamp_nanoseconds < p2.stamp_nanoseconds;
+      }
+      return p1.stamp_unix_seconds < p2.stamp_unix_seconds;
+    });
 
-  Eigen::Matrix3d converted_matrix;
-  converted_matrix = utils::Utils::ned2enu_converter(q.toRotationMatrix());
-
-  Eigen::Quaterniond converted_q(converted_matrix);
-
-  sensor_msgs::msg::Imu converted_imu;
-
-//  converted_imu.header.frame_id = "map";
-//  converted_imu.header.stamp = utils::Utils::get_time();
-
-  converted_imu.orientation.set__x(converted_q.w());
-  converted_imu.orientation.set__x(converted_q.x());
-  converted_imu.orientation.set__y(converted_q.y());
-  converted_imu.orientation.set__z(converted_q.z());
-
-  converted_imu.angular_velocity.set__x(0);
-  converted_imu.angular_velocity.set__y(0);
-  converted_imu.angular_velocity.set__z(0);
-
-//  converted_imu.angular_velocity_covariance
-
-  converted_imu.linear_acceleration.set__x(0);
-  converted_imu.linear_acceleration.set__y(0);
-  converted_imu.linear_acceleration.set__z(0);
-
-//  converted_imu.linear_acceleration_covariance
-
-  return converted_imu;
+  size_t index = std::distance(imu_rotations_.begin(), iter_result);
+  //  std::cout << "ind: " << index << std::endl;
+  return imu_rotations_.at(index);
 }
 
 }  // namespace loam_mapper::transform_provider

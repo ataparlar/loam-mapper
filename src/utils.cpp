@@ -40,7 +40,7 @@ std::vector<std::string> Utils::string_to_vec_split_by(const std::string & input
   return seglist;
 }
 
-Eigen::Matrix3d Utils::ned2enu_converter(const Eigen::Matrix3d & matrix3d)
+Eigen::Matrix3d Utils::ned2enu_converter_for_matrices(const Eigen::Matrix3d & matrix3d)
 {
   Eigen::Matrix3d ned2enu;
   ned2enu.matrix().topLeftCorner<3, 3>() =

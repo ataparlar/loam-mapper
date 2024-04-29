@@ -2,6 +2,7 @@
 #define BUILD_IMAGE_PROJECTION_HPP
 
 #include "points_provider_base.hpp"
+#include "transform_provider.hpp"
 #include "utils.hpp"
 
 #include <Eigen/Geometry>
@@ -35,8 +36,6 @@ public:
 
   explicit ImageProjection();
 
-
-
   utils::Utils::CloudInfo cloudInfo;
 
   std::mutex imuLock;
@@ -48,39 +47,42 @@ public:
 
   Points currentCloudMsg;
 
-//  double * imuTime = new double[queueLength];
-//  double * imuRotX = new double[queueLength];
-//  double * imuRotY = new double[queueLength];
-//  double * imuRotZ = new double[queueLength];
+  //  double * imuTime = new double[queueLength];
+  //  double * imuRotX = new double[queueLength];
+  //  double * imuRotY = new double[queueLength];
+  //  double * imuRotZ = new double[queueLength];
 
-//  int imuPointerCur{};
-//  bool firstPointFlag{};
+  //  int imuPointerCur{};
+    bool firstPointFlag{};
+
   Eigen::Affine3f transStartInverse;
 
   Points fullCloud;
   Points extractedCloud;
 
-//  int deskewFlag{};
+  //  int deskewFlag{};
   cv::Mat rangeMat;
 
-//  bool odomDeskewFlag{};
-//  float odomIncreX{};
-//  float odomIncreY{};
-//  float odomIncreZ{};
+  //  bool odomDeskewFlag{};
+  //  float odomIncreX{};
+  //  float odomIncreY{};
+  //  float odomIncreZ{};
 
   //  lio_sam::msg::CloudInfo cloudInfo;
-//  double timeScanCur{};
-//  double timeScanEnd{};
+  //  double timeScanCur{};
+  //  double timeScanEnd{};
   std_msgs::msg::Header cloudHeader;
 
   std::vector<int> columnIdnCountVec;
 
-//  void setLaserCloudIn(const Points & cloud);
+  //  void setLaserCloudIn(const Points & cloud);
   void allocateMemory();
 
-  void imuHandler(const sensor_msgs::msg::Imu imuMsg);
+  void imuHandler(const transform_provider::TransformProvider::Imu & imuMsg);
   void odomHandler(const nav_msgs::msg::Odometry odometryMsg);
-  void cloudHandler(Points & laserCloudMsg);
+  void cloudHandler(
+    Points & laserCloudMsg,
+    loam_mapper::transform_provider::TransformProvider::SharedPtr & transform_provider);
 
   void cachePointCloud(Points & laserCloudMsg);
   //  bool deskewInfo();
@@ -88,10 +90,14 @@ public:
   //  void odomDeskewInfo();
   //  void findRotation(double pointTime, float * rotXCur, float * rotYCur, float * rotZCur);
   //  void findPosition(double relTime, float * posXCur, float * posYCur, float * posZCur);
-  //  PointType deskewPoint(PointType * point, double relTime);
-  void projectPointCloud(Points & laserCloudMsg);
+  Point deskewPoint(
+    Point & point,
+    loam_mapper::transform_provider::TransformProvider::SharedPtr & transform_provider);
+  void projectPointCloud(
+    Points & laserCloudMsg,
+    loam_mapper::transform_provider::TransformProvider::SharedPtr & transform_provider);
   void cloudExtraction(Points & laserCloudMsg);
-//  void publishClouds();
+  //  void publishClouds();
   void resetParameters();
 };
 

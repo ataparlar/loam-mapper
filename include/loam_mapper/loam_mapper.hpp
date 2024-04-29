@@ -61,6 +61,8 @@ private:
   image_projection::ImageProjection::SharedPtr image_projection;
   feature_extraction::FeatureExtraction::SharedPtr feature_extraction;
 
+  Eigen::Affine3f transStartInverse;
+  
   PointCloud2::SharedPtr points_to_cloud(const Points & points_bad, const std::string & frame_id);
 
   void callback_cloud_surround_out(const Points & points_surround);

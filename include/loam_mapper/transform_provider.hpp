@@ -40,11 +40,11 @@ public:
   };
 
   std::vector<Pose> poses_;
-  std::vector<Imu> imu_rotations;
+  std::vector<Imu> imu_rotations_;
 
   Pose get_pose_at(uint32_t stamp_unix_seconds, uint32_t stamp_nanoseconds);
 
-  sensor_msgs::msg::Imu get_imu_at(uint32_t stamp_unix_seconds, uint32_t stamp_nanoseconds);
+  Imu get_imu_at(uint32_t stamp_unix_seconds, uint32_t stamp_nanoseconds);
 
 private:
   fs::path path_file_ascii_output_;
