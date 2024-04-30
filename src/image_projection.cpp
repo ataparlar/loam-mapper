@@ -72,6 +72,7 @@ void ImageProjection::cachePointCloud(Points & laserCloudMsg)
 void ImageProjection::projectPointCloud(Points & laserCloudMsg, loam_mapper::transform_provider::TransformProvider::SharedPtr & transform_provider)
 {
   int cloudSize = laserCloudMsg.size();
+//  std::cout << "laserCloudMsg.size(): " << laserCloudMsg.size() << std::endl;
   for (int i = 0; i < cloudSize; ++i) {
     Point thisPoint;
     thisPoint.x = laserCloudMsg[i].x;
@@ -103,9 +104,16 @@ void ImageProjection::projectPointCloud(Points & laserCloudMsg, loam_mapper::tra
 
     int columnIdn = -1;
     float horizonAngle = laserCloudMsg[i].horizontal_angle;
+//    float horizonAngle = atan2(thisPoint.x, thisPoint.y) * 180 / M_PI;
     static float ang_res_x = 360.0 / float(1800);
     columnIdn = round((horizonAngle) / ang_res_x);
+//    columnIdn = -round((horizonAngle) / ang_res_x) + 1800 / 2;
     if (columnIdn >= 1800) columnIdn -= 1800;
+
+//    std::cout << "rowIdn : " << rowIdn << std::endl;
+//    std::cout << "columnId : " << columnIdn << std::endl;
+//    std::cout << "horizonAngle : " << horizonAngle << std::endl;
+
 
     if (columnIdn < 0 || columnIdn >= 1800) continue;
 
@@ -127,19 +135,29 @@ void ImageProjection::cloudExtraction(Points & laserCloudMsg)
   //  std::cout << laserCloudMsg.size() << std::endl;
   for (int i = 0; i < 16; ++i) {
     cloudInfo.start_ring_index[i] = count - 1 + 5;
+//    int counter_not_flt_max = 0;
     for (int j = 0; j < 1800; ++j) {
       if (rangeMat.at<float>(i, j) != FLT_MAX) {
         // mark the points' column index for marking occlusion later
         cloudInfo.point_col_index[count] = j;
         // save range info
         cloudInfo.point_range[count] = rangeMat.at<float>(i, j);
+//        std::cout << "rangeMat.at<float>(i, j): " << rangeMat.at<float>(i, j) << std::endl;
         // save extracted cloud
         extractedCloud.push_back(laserCloudMsg[j + i * 1800]);
         // size of extracted cloud
         ++count;
+//        counter_not_flt_max++;
       }
     }
+//    std::cout << "counter_not_flt_max " << counter_not_flt_max << std::endl;
     cloudInfo.end_ring_index[i] = count - 1 - 5;
+
+//    std::cout << "cloudInfo.start_ring_index[i]: " << cloudInfo.start_ring_index[i] <<
+//      std::endl; std::cout << "cloudInfo.end_ring_index[i]: " << cloudInfo.end_ring_index[i]
+//              << "\n" << std::endl;
+
+
   }
 }
 

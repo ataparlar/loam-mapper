@@ -109,6 +109,13 @@ void LoamMapper::process()
   points_provider::PointsProvider::Points cloud_all_surface_;
 
   for (auto & cloud : clouds) {
+    //    image_projection->setLaserCloudIn(cloud_trans);
+
+    image_projection->cloudHandler(cloud, transform_provider);
+    sensor_msgs::msg::Image image = createImageFromRangeMat(image_projection->rangeMat);
+
+    feature_extraction->laserCloudInfoHandler(cloud, image_projection->cloudInfo);
+
     //    utils::Utils::CloudInfo cloudInfo;
     bool firstPointFlag = true;
 
@@ -116,7 +123,9 @@ void LoamMapper::process()
     cloud_trans.resize(cloud.size());
 
     std::transform(
-      std::execution::par, cloud.cbegin(), cloud.cend(), cloud_trans.begin(),
+      //      std::execution::par, cloud.cbegin(), cloud.cend(), cloud_trans.begin(),
+      std::execution::par, feature_extraction->cornerCloud.cbegin(),
+      feature_extraction->cornerCloud.cend(), cloud_trans.begin(),
       [this, &path_, &firstPointFlag](const points_provider::PointsProvider::Point & point) {
         points_provider::PointsProvider::Point point_trans;
         loam_mapper::transform_provider::TransformProvider::Pose pose =
@@ -210,12 +219,6 @@ void LoamMapper::process()
 
         return point_trans;
       });
-
-    //    image_projection->setLaserCloudIn(cloud_trans);
-    image_projection->cloudHandler(cloud_trans, transform_provider);
-    sensor_msgs::msg::Image image = createImageFromRangeMat(image_projection->rangeMat);
-
-    feature_extraction->laserCloudInfoHandler(cloud_trans, image_projection->cloudInfo);
 
     auto corner_cloud_ptr_current = thing_to_cloud(feature_extraction->cornerCloud, "map");
     pub_ptr_corner_cloud_current_->publish(*corner_cloud_ptr_current);

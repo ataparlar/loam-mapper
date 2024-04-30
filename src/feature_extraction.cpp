@@ -17,6 +17,10 @@ void FeatureExtraction::initializationValue()
   //  cornerCloud.reset(new pcl::PointCloud<PointType>());
   //  surfaceCloud.reset(new pcl::PointCloud<PointType>());
 
+  extractedCloud.clear();
+  cornerCloud.clear();
+  surfaceCloud.clear();
+
   cloudCurvature = new float[28800];     // 16 * 1800
   cloudNeighborPicked = new int[28800];  // 16 * 1800
   cloudLabel = new int[28800];           // 16 * 1800
@@ -40,12 +44,37 @@ void FeatureExtraction::laserCloudInfoHandler(
 void FeatureExtraction::calculateSmoothness(utils::Utils::CloudInfo & cloudInfo)
 {
   int cloudSize = extractedCloud.size();
+//  std::cout << "cloudSize: " << cloudSize << std::endl;
+//  int a_counter = 0;
   for (int i = 5; i < cloudSize - 5; i++) {
     float diffRange =
       cloudInfo.point_range[i - 5] + cloudInfo.point_range[i - 4] + cloudInfo.point_range[i - 3] +
       cloudInfo.point_range[i - 2] + cloudInfo.point_range[i - 1] - cloudInfo.point_range[i] * 10 +
       cloudInfo.point_range[i + 1] + cloudInfo.point_range[i + 2] + cloudInfo.point_range[i + 3] +
       cloudInfo.point_range[i + 4] + cloudInfo.point_range[i + 5];
+
+
+//    std::cout << "cloudInfo.point_range[i - 5]: " << cloudInfo.point_range[i - 5] << std::endl;
+//    std::cout << "cloudInfo.point_range[i - 2]: " << cloudInfo.point_range[i - 2] << std::endl;
+//    std::cout << "cloudInfo.point_range[i + 1]: " << cloudInfo.point_range[i + 1] << std::endl;
+//    std::cout << "cloudInfo.point_range[i + 4]: " << cloudInfo.point_range[i + 4] << std::endl;
+//
+//    std::cout << "cloudInfo.point_range[i - 4]: " << cloudInfo.point_range[i - 4] << std::endl;
+//    std::cout << "cloudInfo.point_range[i - 1]: " << cloudInfo.point_range[i - 1] << std::endl;
+//    std::cout << "cloudInfo.point_range[i + 2]: " << cloudInfo.point_range[i + 2] << std::endl;
+//    std::cout << "cloudInfo.point_range[i + 5]: " << cloudInfo.point_range[i + 5] << std::endl;
+//
+//    std::cout << "cloudInfo.point_range[i - 3]: " << cloudInfo.point_range[i - 3] << std::endl;
+//    std::cout << "cloudInfo.point_range[i] * 10: " << cloudInfo.point_range[i] * 10 << std::endl;
+//    std::cout << "cloudInfo.point_range[i + 3]: " << cloudInfo.point_range[i + 3] << std::endl;
+//    std::cout << "cloudInfo.point_range[i]: " << cloudInfo.point_range[i] << std::endl;
+//    std::cout << "\n " << std::endl;
+
+//    if (cloudInfo.point_range[i] != 0) {
+//      a_counter++;
+//    }
+
+
 
     //      if (diffRange != 0) {
     //        std::cout << cloudInfo.point_range[i - 5] << std::endl;
@@ -58,7 +87,12 @@ void FeatureExtraction::calculateSmoothness(utils::Utils::CloudInfo & cloudInfo)
     // cloudSmoothness for sorting
     cloudSmoothness[i].value = cloudCurvature[i];
     cloudSmoothness[i].ind = i;
+
+//    std::cout << "cloudSmoothness[i].value:  " << cloudSmoothness[i].value << std::endl;
+
+
   }
+  //  std::cout << "a_counter: " << a_counter << std::endl;
 }
 
 void FeatureExtraction::markOccludedPoints(utils::Utils::CloudInfo & cloudInfo)
@@ -107,6 +141,7 @@ void FeatureExtraction::extractFeatures(
   Points surfaceCloudScanDS;
 
   for (int i = 1; i < 16; i++) {
+//    std::cout << "surfaceCloudScan->size(): " << surfaceCloudScan.size() << std::endl;
     surfaceCloudScan.clear();
 
     for (int j = 0; j < 6; j++) {
@@ -114,26 +149,33 @@ void FeatureExtraction::extractFeatures(
       int ep =
         (cloudInfo.start_ring_index[i] * (5 - j) + cloudInfo.end_ring_index[i] * (j + 1)) / 6 - 1;
 
-      //      std::cout << "i: " << i << std::endl;
-      //      std::cout << "j: " << j << std::endl;
-      //
-      //      std::cout << "sp: " << sp << std::endl;
-      //      std::cout << "ep: " << ep << std::endl;
-      //
-      //
-      //      std::cout << "cloudInfo.start_ring_index[i]: " << cloudInfo.start_ring_index[i] <<
-      //      std::endl; std::cout << "cloudInfo.end_ring_index[i]: " << cloudInfo.end_ring_index[i]
-      //      << std::endl;
+            std::cout << "i: " << i << std::endl;
+            std::cout << "j: " << j << std::endl;
+////
+//            std::cout << "sp: " << sp << std::endl;
+//            std::cout << "ep: " << ep << std::endl;
+//
+//      std::cout << "cloudInfo.start_ring_index[i]: " << cloudInfo.start_ring_index[i] <<
+//            std::endl; std::cout << "cloudInfo.end_ring_index[i]: " << cloudInfo.end_ring_index[i]
+//            << "\n" << std::endl;
 
       if (sp >= ep) continue;
 
       std::sort(cloudSmoothness.begin() + sp, cloudSmoothness.begin() + ep, by_value());
+
+      //      std::cout << "\ncloudSmoothness.size(): " << cloudSmoothness.size() << std::endl;
+      //      for (auto smooth : cloudSmoothness) {
+      //        std::cout << "smooth.ind: " << smooth.ind << "\t" << "smooth.value: " << smooth.value << std::endl;
+      //      }
+
 
       int largestPickedNum = 0;
       for (int k = ep; k >= sp; k--) {  // find edge points
 
         int ind = cloudSmoothness[k].ind;
         if (cloudNeighborPicked[ind] == 0 && cloudCurvature[ind] > edgeThreshold) {
+//          std::cout << "cloudNeighborPicked[ind] " << cloudNeighborPicked[ind] << "\t" << "cloudCurvature[ind] " << cloudCurvature[ind] << std::endl;
+
           largestPickedNum++;
           if (largestPickedNum <= 20) {
             cloudLabel[ind] = 1;
