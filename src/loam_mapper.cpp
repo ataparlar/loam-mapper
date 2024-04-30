@@ -154,7 +154,6 @@ void LoamMapper::process()
             quat.toRotationMatrix() * affine_imu2lidar.rotation();
         }
 
-
         auto & pose_pos = pose_stamped.pose.position;
         affine_sensor2map.matrix().topRightCorner<3, 1>() << pose_pos.x, pose_pos.y, pose_pos.z;
 
@@ -170,39 +169,44 @@ void LoamMapper::process()
         point_trans.stamp_unix_seconds = point.stamp_unix_seconds;
         point_trans.stamp_nanoseconds = point.stamp_nanoseconds;
 
-//        if (firstPointFlag == true) {
-//          transStartInverse =
-//            (pcl::getTransformation(
-//               pose.pose_with_covariance.pose.position.x, pose.pose_with_covariance.pose.position.y,
-//               pose.pose_with_covariance.pose.position.z,
-//               quat.toRotationMatrix().eulerAngles(0, 1, 2)[0],
-//               quat.toRotationMatrix().eulerAngles(0, 1, 2)[1],
-//               quat.toRotationMatrix().eulerAngles(0, 1, 2)[2]))
-//              .inverse();
-//          firstPointFlag = false;
-//        }
-//
-//        // transform points to start
-//        Eigen::Affine3f transFinal = pcl::getTransformation(
-//          pose.pose_with_covariance.pose.position.x, pose.pose_with_covariance.pose.position.y,
-//          pose.pose_with_covariance.pose.position.z,
-//          quat.toRotationMatrix().eulerAngles(0, 1, 2)[0],
-//          quat.toRotationMatrix().eulerAngles(0, 1, 2)[1],
-//          quat.toRotationMatrix().eulerAngles(0, 1, 2)[2]);
-//        Eigen::Affine3f transBt = transStartInverse * transFinal;
-//
-//        points_provider::PointsProviderBase::Point point_deskewed;
-//        point_deskewed.x = transBt(0, 0) * point_trans.x + transBt(0, 1) * point_trans.y + transBt(0, 2) * point_trans.z +
-//                   transBt(0, 3);
-//        point_deskewed.y = transBt(1, 0) * point_trans.x + transBt(1, 1) * point_trans.y + transBt(1, 2) * point_trans.z +
-//                   transBt(1, 3);
-//        point_deskewed.z = transBt(2, 0) * point_trans.x + transBt(2, 1) * point_trans.y + transBt(2, 2) * point_trans.z +
-//                   transBt(2, 3);
-//        point_deskewed.intensity = point_trans.intensity;
-//        point_deskewed.stamp_unix_seconds = point_trans.stamp_unix_seconds;
-//        point_deskewed.stamp_nanoseconds = point_trans.stamp_nanoseconds;
-//        point_deskewed.ring = point_trans.ring;
-//        point_deskewed.horizontal_angle = point_trans.horizontal_angle;
+        //        if (firstPointFlag == true) {
+        //          transStartInverse =
+        //            (pcl::getTransformation(
+        //               pose.pose_with_covariance.pose.position.x,
+        //               pose.pose_with_covariance.pose.position.y,
+        //               pose.pose_with_covariance.pose.position.z,
+        //               quat.toRotationMatrix().eulerAngles(0, 1, 2)[0],
+        //               quat.toRotationMatrix().eulerAngles(0, 1, 2)[1],
+        //               quat.toRotationMatrix().eulerAngles(0, 1, 2)[2]))
+        //              .inverse();
+        //          firstPointFlag = false;
+        //        }
+        //
+        //        // transform points to start
+        //        Eigen::Affine3f transFinal = pcl::getTransformation(
+        //          pose.pose_with_covariance.pose.position.x,
+        //          pose.pose_with_covariance.pose.position.y,
+        //          pose.pose_with_covariance.pose.position.z,
+        //          quat.toRotationMatrix().eulerAngles(0, 1, 2)[0],
+        //          quat.toRotationMatrix().eulerAngles(0, 1, 2)[1],
+        //          quat.toRotationMatrix().eulerAngles(0, 1, 2)[2]);
+        //        Eigen::Affine3f transBt = transStartInverse * transFinal;
+        //
+        //        points_provider::PointsProviderBase::Point point_deskewed;
+        //        point_deskewed.x = transBt(0, 0) * point_trans.x + transBt(0, 1) * point_trans.y +
+        //        transBt(0, 2) * point_trans.z +
+        //                   transBt(0, 3);
+        //        point_deskewed.y = transBt(1, 0) * point_trans.x + transBt(1, 1) * point_trans.y +
+        //        transBt(1, 2) * point_trans.z +
+        //                   transBt(1, 3);
+        //        point_deskewed.z = transBt(2, 0) * point_trans.x + transBt(2, 1) * point_trans.y +
+        //        transBt(2, 2) * point_trans.z +
+        //                   transBt(2, 3);
+        //        point_deskewed.intensity = point_trans.intensity;
+        //        point_deskewed.stamp_unix_seconds = point_trans.stamp_unix_seconds;
+        //        point_deskewed.stamp_nanoseconds = point_trans.stamp_nanoseconds;
+        //        point_deskewed.ring = point_trans.ring;
+        //        point_deskewed.horizontal_angle = point_trans.horizontal_angle;
 
         return point_trans;
       });
@@ -298,13 +302,15 @@ sensor_msgs::msg::Image LoamMapper::createImageFromRangeMat(const cv::Mat & rang
   sensor_msgs::msg::Image image;
   image.header.stamp = this->get_clock()->now();
   image.header.frame_id = "map";
-  image.height = 16;
+  image.height = 480;
   image.width = 1800;
   image.step = rangeMat.step;
   image.encoding = "mono8";
   for (int i = 0; i < 16; i++) {
-    for (int j = 0; j < 1800; j++) {
-      image.data.push_back(rangeMat.at<char>(i, j));
+    for (int a = 0; a < 30; a++) {
+      for (int j = 0; j < 1800; j++) {
+        image.data.push_back(rangeMat.at<char>(i, j));
+      }
     }
   }
   return image;
