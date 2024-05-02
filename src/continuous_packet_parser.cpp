@@ -45,9 +45,10 @@ ContinuousPacketParser::ContinuousPacketParser()
   map_velodyne_model_to_string_.insert(std::make_pair(VelodyneModel::VLS128, "VLS128"));
 
   channel_to_angle_vertical_ = std::vector<float>{
-    -15.0F, 1.0F,  -13.0F, 3.0F,  -11.0F, 5.0F,   -9.0F, 7.0F,   -7.0F, 9.0F,   -5.0F,
-    11.0F,  -3.0F, 13.0F,  -1.0F, 15.0F,  -15.0F, 1.0F,  -13.0F, 3.0F,  -11.0F, 5.0F,
-    -9.0F,  7.0F,  -7.0F,  9.0F,  -5.0F,  11.0F,  -3.0F, 13.0F,  -1.0F, 15.0F};
+    -15.0F, 1.0F,  -13.0F, 3.0F,  -11.0F, 5.0F, -9.0F, 7.0F,   -7.0F, 9.0F,   -5.0F,
+    11.0F,  -3.0F, 13.0F,  -1.0F, 15.0F,
+    -15.0F, 1.0F,  -13.0F, 3.0F,  -11.0F, 5.0F, -9.0F,  7.0F,  -7.0F,  9.0F,  -5.0F,
+    11.0F,  -3.0F, 13.0F,  -1.0F, 15.0F};
   assert(channel_to_angle_vertical_.size() == 32);  //  VLP-16 has 32 channels in each data block
 
   channel_mod_8_to_azimuth_offsets_ =
@@ -122,13 +123,13 @@ void ContinuousPacketParser::process_packet_into_cloud(
       // TOH = Top Of the Hour
       date::hh_mm_ss microseconds_since_toh =
         date::make_time(std::chrono::microseconds(data_packet_with_header->microseconds_toh));
-      //          std::cout << "data_packet_with_header->timestamp_microseconds_since_hour: " <<
-      //            data_packet_with_header->timestamp_microseconds_since_hour << std::endl;
-      //          std::cout << "date_time.hours(): " << microseconds_since_toh.hours().count() <<
-      //          std::endl; std::cout << "date_time.minutes(): " <<
-      //          microseconds_since_toh.minutes().count() << std::endl; std::cout <<
-      //          "date_time.seconds(): " << microseconds_since_toh.seconds().count() <<
-      //          std::endl;
+//                std::cout << "data_packet_with_header->timestamp_microseconds_since_hour: " <<
+//                  data_packet_with_header->timestamp_microseconds_since_hour << std::endl;
+//                std::cout << "date_time.hours(): " << microseconds_since_toh.hours().count() <<
+//                std::endl; std::cout << "date_time.minutes(): " <<
+//                microseconds_since_toh.minutes().count() << std::endl; std::cout <<
+//                "date_time.seconds(): " << microseconds_since_toh.seconds().count() <<
+//                std::endl;
 
       auto velodyne_model =
         map_byte_to_velodyne_model_.at(data_packet_with_header->factory_byte_product_id);
@@ -183,6 +184,7 @@ void ContinuousPacketParser::process_packet_into_cloud(
         if (!has_processed_a_packet_) {
           angle_deg_azimuth_last_packet_ = angle_deg_azimuth_of_block;
           microseconds_last_packet_ = data_packet_with_header->microseconds_toh;
+          std::cout << "data_packet_with_header->microseconds_toh: " << data_packet_with_header->microseconds_toh << std::endl;
           has_processed_a_packet_ = true;
           break;
         } else if (ind_block == 0) {
@@ -243,7 +245,8 @@ void ContinuousPacketParser::process_packet_into_cloud(
           point.y = dist_xy * std::cos(angle_rad_azimuth_point);
           point.z = dist_m * std::sin(angle_rad_vertical);
           point.intensity = data_point.reflectivity;
-          point.ring = ind_point % 16 + 1;
+          point.ring = ind_point % 16;
+//          std::cout << "point.ring: " << point.ring << "\tvertical angle: " << angle_deg_vertical << "\tdist: " << dist_m << std::endl;
           point.horizontal_angle = angle_deg_azimuth_point;
           point.stamp_unix_seconds =
             std::chrono::seconds(
@@ -260,7 +263,9 @@ void ContinuousPacketParser::process_packet_into_cloud(
             continue;
           }
 
-          cloud_.push_back(point);
+          if (dist_m != 0) {
+            cloud_.push_back(point);
+          }
         }
       }
 

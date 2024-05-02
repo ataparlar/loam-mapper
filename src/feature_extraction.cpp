@@ -149,8 +149,8 @@ void FeatureExtraction::extractFeatures(
       int ep =
         (cloudInfo.start_ring_index[i] * (5 - j) + cloudInfo.end_ring_index[i] * (j + 1)) / 6 - 1;
 
-            std::cout << "i: " << i << std::endl;
-            std::cout << "j: " << j << std::endl;
+//            std::cout << "i: " << i << std::endl;
+//            std::cout << "j: " << j << std::endl;
 ////
 //            std::cout << "sp: " << sp << std::endl;
 //            std::cout << "ep: " << ep << std::endl;

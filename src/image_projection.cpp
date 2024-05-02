@@ -2,7 +2,6 @@
 #include "loam_mapper/image_projection.hpp"
 
 #include "loam_mapper/utils.hpp"
-
 #include "pcl/common/transforms.h"
 
 namespace loam_mapper::image_projection
@@ -20,13 +19,13 @@ ImageProjection::ImageProjection()
 
 void ImageProjection::allocateMemory()
 {
-  fullCloud.resize(16*1800);
+  fullCloud.resize(16 * 1800);
 
   cloudInfo.start_ring_index.assign(16, 0);
   cloudInfo.end_ring_index.assign(16, 0);
 
-  cloudInfo.point_col_index.assign(16*1800, 0);
-  cloudInfo.point_range.assign(16*1800, 0);
+  cloudInfo.point_col_index.assign(16 * 1800, 0);
+  cloudInfo.point_range.assign(16 * 1800, 0);
 
   resetParameters();
 }
@@ -46,14 +45,15 @@ void ImageProjection::odomHandler(const nav_msgs::msg::Odometry odometryMsg)
   odomQueue.push_back(odometryMsg);
 }
 
-void ImageProjection::cloudHandler(Points & laserCloudMsg, loam_mapper::transform_provider::TransformProvider::SharedPtr & transform_provider)
+void ImageProjection::cloudHandler(
+  Points & laserCloudMsg,
+  loam_mapper::transform_provider::TransformProvider::SharedPtr & transform_provider)
 {
   cachePointCloud(laserCloudMsg);
 
   projectPointCloud(laserCloudMsg, transform_provider);
 
   cloudExtraction(laserCloudMsg);
-
 }
 
 void ImageProjection::cachePointCloud(Points & laserCloudMsg)
@@ -62,17 +62,15 @@ void ImageProjection::cachePointCloud(Points & laserCloudMsg)
   if (cloudQueue.size() > 2)
     // convert cloud
     currentCloudMsg = std::move(cloudQueue.front());
-    cloudQueue.pop_front();
-
-
-
-
+  cloudQueue.pop_front();
 }
 
-void ImageProjection::projectPointCloud(Points & laserCloudMsg, loam_mapper::transform_provider::TransformProvider::SharedPtr & transform_provider)
+void ImageProjection::projectPointCloud(
+  Points & laserCloudMsg,
+  loam_mapper::transform_provider::TransformProvider::SharedPtr & transform_provider)
 {
   int cloudSize = laserCloudMsg.size();
-//  std::cout << "laserCloudMsg.size(): " << laserCloudMsg.size() << std::endl;
+  //  std::cout << "laserCloudMsg.size(): " << laserCloudMsg.size() << std::endl;
   for (int i = 0; i < cloudSize; ++i) {
     Point thisPoint;
     thisPoint.x = laserCloudMsg[i].x;
@@ -84,43 +82,60 @@ void ImageProjection::projectPointCloud(Points & laserCloudMsg, loam_mapper::tra
     thisPoint.stamp_unix_seconds = laserCloudMsg[i].stamp_unix_seconds;
     thisPoint.stamp_nanoseconds = laserCloudMsg[i].stamp_nanoseconds;
 
-
-
-//    double pointTime = laserCloudMsg[i].stamp_unix_seconds + laserCloudMsg[i].stamp_nanoseconds*10e-9;
-//
-//    std::cout << "laserCloudMsg[i].stamp_unix_seconds: " << laserCloudMsg[i].stamp_unix_seconds << std::endl;
-//    std::cout << "laserCloudMsg[i].stamp_nanoseconds: " << laserCloudMsg[i].stamp_nanoseconds << std::endl;
-//    std::cout << "pointTime: " << std::setprecision(18) << pointTime << std::endl;
-//    std::cout << "\n" << std::endl;
+    //    double pointTime = laserCloudMsg[i].stamp_unix_seconds +
+    //    laserCloudMsg[i].stamp_nanoseconds*10e-9;
+    //
+    //    std::cout << "laserCloudMsg[i].stamp_unix_seconds: " <<
+    //    laserCloudMsg[i].stamp_unix_seconds << std::endl; std::cout <<
+    //    "laserCloudMsg[i].stamp_nanoseconds: " << laserCloudMsg[i].stamp_nanoseconds << std::endl;
+    //    std::cout << "pointTime: " << std::setprecision(18) << pointTime << std::endl;
+    //    std::cout << "\n" << std::endl;
 
     float range =
       sqrt(thisPoint.x * thisPoint.x + thisPoint.y * thisPoint.y + thisPoint.z * thisPoint.z);
 
-    int rowIdn = laserCloudMsg[i].ring;
+    //    std::cout << "range: " << range << std::endl;
+
+//    std::map<int, int> ring_map{
+//      {0, 0}, {1, 8},  {2, 1},  {3, 9},   {4, 2},  {5, 10},  {6, 3},  {7, 11},
+//      {8, 4}, {9, 12}, {10, 5}, {11, 13}, {12, 6}, {13, 14}, {14, 7}, {15, 15},
+//    };
+
+    std::vector<int> ring_vector{0, 8, 1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15};
+
+    int rowIdn = 15 - ring_vector.at(thisPoint.ring);
+
+    //    if (thisPoint.ring % 2 == 0) {
+    //      rowIdn = thisPoint.ring;
+    //    } else {
+    //      rowIdn = thisPoint.ring + 8;
+    //    }
+
+    //    std::cout << "ring: " << thisPoint.ring << std::endl;
     if (rowIdn < 0 || rowIdn >= 16) continue;
 
     //    if (rowIdn % downsampleRate != 0)
     //      continue;
 
     int columnIdn = -1;
-    float horizonAngle = laserCloudMsg[i].horizontal_angle;
-//    float horizonAngle = atan2(thisPoint.x, thisPoint.y) * 180 / M_PI;
+    float horizonAngle = thisPoint.horizontal_angle;
+    //    float horizonAngle = atan2(thisPoint.x, thisPoint.y) * 180 / M_PI;
     static float ang_res_x = 360.0 / float(1800);
     columnIdn = round((horizonAngle) / ang_res_x);
-//    columnIdn = -round((horizonAngle) / ang_res_x) + 1800 / 2;
+    //    columnIdn = -round((horizonAngle) / ang_res_x) + 1800.0 / 2;
+    //    std::cout << "columnIdn: " << columnIdn << std::endl;
     if (columnIdn >= 1800) columnIdn -= 1800;
 
-//    std::cout << "rowIdn : " << rowIdn << std::endl;
-//    std::cout << "columnId : " << columnIdn << std::endl;
-//    std::cout << "horizonAngle : " << horizonAngle << std::endl;
-
+    //    std::cout << "rowIdn : " << rowIdn << std::endl;
+    //    std::cout << "columnId : " << columnIdn << std::endl;
+    //    std::cout << "horizonAngle : " << horizonAngle << std::endl;
 
     if (columnIdn < 0 || columnIdn >= 1800) continue;
 
     // project the point cloud into 2d projection. make a depth map from it.
     if (rangeMat.at<float>(rowIdn, columnIdn) != FLT_MAX) continue;
 
-//    auto new_point = deskewPoint(thisPoint, transform_provider);
+    //    auto new_point = deskewPoint(thisPoint, transform_provider);
 
     rangeMat.at<float>(rowIdn, columnIdn) = range;
 
@@ -135,29 +150,28 @@ void ImageProjection::cloudExtraction(Points & laserCloudMsg)
   //  std::cout << laserCloudMsg.size() << std::endl;
   for (int i = 0; i < 16; ++i) {
     cloudInfo.start_ring_index[i] = count - 1 + 5;
-//    int counter_not_flt_max = 0;
+    //    int counter_not_flt_max = 0;
     for (int j = 0; j < 1800; ++j) {
       if (rangeMat.at<float>(i, j) != FLT_MAX) {
         // mark the points' column index for marking occlusion later
         cloudInfo.point_col_index[count] = j;
         // save range info
         cloudInfo.point_range[count] = rangeMat.at<float>(i, j);
-//        std::cout << "rangeMat.at<float>(i, j): " << rangeMat.at<float>(i, j) << std::endl;
+        //        std::cout << "rangeMat.at<float>(i, j): " << rangeMat.at<float>(i, j) <<
+        //        std::endl;
         // save extracted cloud
         extractedCloud.push_back(laserCloudMsg[j + i * 1800]);
         // size of extracted cloud
         ++count;
-//        counter_not_flt_max++;
+        //        counter_not_flt_max++;
       }
     }
-//    std::cout << "counter_not_flt_max " << counter_not_flt_max << std::endl;
+    //    std::cout << "counter_not_flt_max " << counter_not_flt_max << std::endl;
     cloudInfo.end_ring_index[i] = count - 1 - 5;
 
-//    std::cout << "cloudInfo.start_ring_index[i]: " << cloudInfo.start_ring_index[i] <<
-//      std::endl; std::cout << "cloudInfo.end_ring_index[i]: " << cloudInfo.end_ring_index[i]
-//              << "\n" << std::endl;
-
-
+    //    std::cout << "cloudInfo.start_ring_index[i]: " << cloudInfo.start_ring_index[i] <<
+    //      std::endl; std::cout << "cloudInfo.end_ring_index[i]: " << cloudInfo.end_ring_index[i]
+    //              << "\n" << std::endl;
   }
 }
 
@@ -169,7 +183,7 @@ void ImageProjection::resetParameters()
   rangeMat = cv::Mat(16, 1800, CV_32F, cv::Scalar::all(FLT_MAX));
 
   //  imuPointerCur = 0;
-    firstPointFlag = true;
+  firstPointFlag = true;
   //  odomDeskewFlag = false;
   //
   //  for (int i = 0; i < queueLength; ++i)
@@ -181,18 +195,19 @@ void ImageProjection::resetParameters()
   //  }
 }
 
-Point ImageProjection::deskewPoint(Point & point, loam_mapper::transform_provider::TransformProvider::SharedPtr & transform_provider)
+Point ImageProjection::deskewPoint(
+  Point & point, loam_mapper::transform_provider::TransformProvider::SharedPtr & transform_provider)
 {
-//  double pointTime = point.stamp_unix_seconds + point.stamp_nanoseconds*10e-9;
+  //  double pointTime = point.stamp_unix_seconds + point.stamp_nanoseconds*10e-9;
 
-//  auto imu_ = transform_provider->get_imu_at(point.stamp_unix_seconds, point.stamp_nanoseconds);
+  //  auto imu_ = transform_provider->get_imu_at(point.stamp_unix_seconds, point.stamp_nanoseconds);
   auto pose_ = transform_provider->get_pose_at(point.stamp_unix_seconds, point.stamp_nanoseconds);
 
   Eigen::Quaternion q(
     pose_.pose_with_covariance.pose.orientation.w, pose_.pose_with_covariance.pose.orientation.x,
     pose_.pose_with_covariance.pose.orientation.y, pose_.pose_with_covariance.pose.orientation.z);
 
-  auto euler  = q.toRotationMatrix().eulerAngles(0, 1, 2);
+  auto euler = q.toRotationMatrix().eulerAngles(0, 1, 2);
   double rotXCur = euler[0];
   double rotYCur = euler[1];
   double rotZCur = euler[2];
@@ -201,21 +216,24 @@ Point ImageProjection::deskewPoint(Point & point, loam_mapper::transform_provide
   double posYCur = pose_.pose_with_covariance.pose.position.y;
   double posZCur = pose_.pose_with_covariance.pose.position.z;
 
-  if (firstPointFlag == true)
-  {
-    transStartInverse = (pcl::getTransformation(posXCur, posYCur, posZCur, rotXCur, rotYCur, rotZCur)).inverse();
+  if (firstPointFlag == true) {
+    transStartInverse =
+      (pcl::getTransformation(posXCur, posYCur, posZCur, rotXCur, rotYCur, rotZCur)).inverse();
     firstPointFlag = false;
   }
 
   // transform points to start
-  Eigen::Affine3f transFinal = pcl::getTransformation(posXCur, posYCur, posZCur, rotXCur, rotYCur, rotZCur);
+  Eigen::Affine3f transFinal =
+    pcl::getTransformation(posXCur, posYCur, posZCur, rotXCur, rotYCur, rotZCur);
   Eigen::Affine3f transBt = transStartInverse * transFinal;
 
-
   Point point_;
-  point_.x = transBt(0, 0) * point.x + transBt(0, 1) * point.y + transBt(0, 2) * point.z + transBt(0, 3);
-  point_.y = transBt(1, 0) * point.x + transBt(1, 1) * point.y + transBt(1, 2) * point.z + transBt(1, 3);
-  point_.z = transBt(2, 0) * point.x + transBt(2, 1) * point.y + transBt(2, 2) * point.z + transBt(2, 3);
+  point_.x =
+    transBt(0, 0) * point.x + transBt(0, 1) * point.y + transBt(0, 2) * point.z + transBt(0, 3);
+  point_.y =
+    transBt(1, 0) * point.x + transBt(1, 1) * point.y + transBt(1, 2) * point.z + transBt(1, 3);
+  point_.z =
+    transBt(2, 0) * point.x + transBt(2, 1) * point.y + transBt(2, 2) * point.z + transBt(2, 3);
   point_.intensity = point.intensity;
   point_.stamp_unix_seconds = point.stamp_unix_seconds;
   point_.stamp_nanoseconds = point.stamp_nanoseconds;
@@ -224,6 +242,5 @@ Point ImageProjection::deskewPoint(Point & point, loam_mapper::transform_provide
 
   return point_;
 }
-
 
 }  // namespace loam_mapper::image_projection

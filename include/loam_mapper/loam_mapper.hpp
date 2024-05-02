@@ -68,6 +68,7 @@ private:
   void callback_cloud_surround_out(const Points & points_surround);
   sensor_msgs::msg::Image createImageFromRangeMat(const cv::Mat & rangeMat);
   void clear_cloudInfo(utils::Utils::CloudInfo & cloudInfo);
+  Points transform_points(Points & cloud);
 
 };
 

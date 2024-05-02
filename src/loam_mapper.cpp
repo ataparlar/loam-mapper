@@ -77,7 +77,7 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
 
   std::function<void(const Points &)> callback =
     std::bind(&LoamMapper::callback_cloud_surround_out, this, std::placeholders::_1);
-  points_provider->process_pcaps_into_clouds(callback, 0, 2);
+  points_provider->process_pcaps_into_clouds(callback, 0, 1);
   std::cout << "process_pcaps_into_clouds done" << std::endl;
 
   process();
@@ -116,127 +116,31 @@ void LoamMapper::process()
 
     feature_extraction->laserCloudInfoHandler(cloud, image_projection->cloudInfo);
 
-    //    utils::Utils::CloudInfo cloudInfo;
-    bool firstPointFlag = true;
 
-    points_provider::PointsProvider::Points cloud_trans;
-    cloud_trans.resize(cloud.size());
 
-    std::transform(
-      //      std::execution::par, cloud.cbegin(), cloud.cend(), cloud_trans.begin(),
-      std::execution::par, feature_extraction->cornerCloud.cbegin(),
-      feature_extraction->cornerCloud.cend(), cloud_trans.begin(),
-      [this, &path_, &firstPointFlag](const points_provider::PointsProvider::Point & point) {
-        points_provider::PointsProvider::Point point_trans;
-        loam_mapper::transform_provider::TransformProvider::Pose pose =
-          this->transform_provider->get_pose_at(point.stamp_unix_seconds, point.stamp_nanoseconds);
-
-        geometry_msgs::msg::PoseStamped pose_stamped;
-        pose_stamped.pose = pose.pose_with_covariance.pose;
-        pose_stamped.header.frame_id = path_.header.frame_id;
-
-        const auto & pose_ori = pose.pose_with_covariance.pose.orientation;
-        Eigen::Quaterniond quat(pose_ori.w, pose_ori.x, pose_ori.y, pose_ori.z);
-
-        Eigen::Affine3d affine_sensor2map(Eigen::Affine3d::Identity());
-
-        Eigen::Affine3d affine_imu2lidar(Eigen::Affine3d::Identity());
-        affine_imu2lidar.matrix().topLeftCorner<3, 3>() =
-          Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_yaw_), Eigen::Vector3d::UnitZ())
-            .toRotationMatrix() *
-          Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_pitch_), Eigen::Vector3d::UnitY())
-            .toRotationMatrix() *
-          Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_roll_), Eigen::Vector3d::UnitX())
-            .toRotationMatrix();
-
-        if (enable_ned2enu_) {
-          Eigen::Affine3d affine_imu2lidar_enu;
-          affine_imu2lidar_enu.matrix().topLeftCorner<3, 3>() =
-            utils::Utils::ned2enu_converter_for_matrices(
-              affine_imu2lidar.matrix().topLeftCorner<3, 3>());
-
-          affine_sensor2map.matrix().topLeftCorner<3, 3>() =
-            quat.toRotationMatrix() * affine_imu2lidar_enu.rotation();
-
-        } else {
-          affine_sensor2map.matrix().topLeftCorner<3, 3>() =
-            quat.toRotationMatrix() * affine_imu2lidar.rotation();
-        }
-
-        auto & pose_pos = pose_stamped.pose.position;
-        affine_sensor2map.matrix().topRightCorner<3, 1>() << pose_pos.x, pose_pos.y, pose_pos.z;
-
-        Eigen::Vector4d vec_point_in(point.x, point.y, point.z, 1.0);
-        Eigen::Vector4d vec_point_trans = affine_sensor2map.matrix() * vec_point_in;
-
-        point_trans.x = static_cast<float>(vec_point_trans(0));
-        point_trans.y = static_cast<float>(vec_point_trans(1));
-        point_trans.z = static_cast<float>(vec_point_trans(2));
-        point_trans.ring = point.ring;
-        point_trans.horizontal_angle = point.horizontal_angle;
-        point_trans.intensity = point.intensity;
-        point_trans.stamp_unix_seconds = point.stamp_unix_seconds;
-        point_trans.stamp_nanoseconds = point.stamp_nanoseconds;
-
-        //        if (firstPointFlag == true) {
-        //          transStartInverse =
-        //            (pcl::getTransformation(
-        //               pose.pose_with_covariance.pose.position.x,
-        //               pose.pose_with_covariance.pose.position.y,
-        //               pose.pose_with_covariance.pose.position.z,
-        //               quat.toRotationMatrix().eulerAngles(0, 1, 2)[0],
-        //               quat.toRotationMatrix().eulerAngles(0, 1, 2)[1],
-        //               quat.toRotationMatrix().eulerAngles(0, 1, 2)[2]))
-        //              .inverse();
-        //          firstPointFlag = false;
-        //        }
-        //
-        //        // transform points to start
-        //        Eigen::Affine3f transFinal = pcl::getTransformation(
-        //          pose.pose_with_covariance.pose.position.x,
-        //          pose.pose_with_covariance.pose.position.y,
-        //          pose.pose_with_covariance.pose.position.z,
-        //          quat.toRotationMatrix().eulerAngles(0, 1, 2)[0],
-        //          quat.toRotationMatrix().eulerAngles(0, 1, 2)[1],
-        //          quat.toRotationMatrix().eulerAngles(0, 1, 2)[2]);
-        //        Eigen::Affine3f transBt = transStartInverse * transFinal;
-        //
-        //        points_provider::PointsProviderBase::Point point_deskewed;
-        //        point_deskewed.x = transBt(0, 0) * point_trans.x + transBt(0, 1) * point_trans.y +
-        //        transBt(0, 2) * point_trans.z +
-        //                   transBt(0, 3);
-        //        point_deskewed.y = transBt(1, 0) * point_trans.x + transBt(1, 1) * point_trans.y +
-        //        transBt(1, 2) * point_trans.z +
-        //                   transBt(1, 3);
-        //        point_deskewed.z = transBt(2, 0) * point_trans.x + transBt(2, 1) * point_trans.y +
-        //        transBt(2, 2) * point_trans.z +
-        //                   transBt(2, 3);
-        //        point_deskewed.intensity = point_trans.intensity;
-        //        point_deskewed.stamp_unix_seconds = point_trans.stamp_unix_seconds;
-        //        point_deskewed.stamp_nanoseconds = point_trans.stamp_nanoseconds;
-        //        point_deskewed.ring = point_trans.ring;
-        //        point_deskewed.horizontal_angle = point_trans.horizontal_angle;
-
-        return point_trans;
-      });
-
-    auto corner_cloud_ptr_current = thing_to_cloud(feature_extraction->cornerCloud, "map");
-    pub_ptr_corner_cloud_current_->publish(*corner_cloud_ptr_current);
-
-    auto surface_cloud_ptr_current = thing_to_cloud(feature_extraction->surfaceCloud, "map");
-    pub_ptr_surface_cloud_current_->publish(*surface_cloud_ptr_current);
-
-    cloud_all.insert(cloud_all.end(), cloud_trans.begin(), cloud_trans.end());
-    cloud_all_corner_.insert(
-      cloud_all_corner_.end(), feature_extraction->cornerCloud.begin(),
-      feature_extraction->cornerCloud.end());
-    cloud_all_surface_.insert(
-      cloud_all_surface_.end(), feature_extraction->surfaceCloud.begin(),
-      feature_extraction->surfaceCloud.end());
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    Points cloud_trans = transform_points(cloud);
     auto cloud_ptr_current = thing_to_cloud(cloud_trans, "map");
     pub_ptr_basic_cloud_current_->publish(*cloud_ptr_current);
     pub_ptr_image_->publish(image);
+    cloud_all.insert(cloud_all.end(), cloud_trans.begin(), cloud_trans.end());
+
+
+    Points cloud_corner_trans = transform_points(feature_extraction->cornerCloud);
+    auto corner_cloud_ptr_current = thing_to_cloud(cloud_corner_trans, "map");
+    pub_ptr_corner_cloud_current_->publish(*corner_cloud_ptr_current);
+    cloud_all_corner_.insert(
+      cloud_all_corner_.end(), cloud_corner_trans.begin(),
+      cloud_corner_trans.end());
+
+
+    Points cloud_surface_trans = transform_points(feature_extraction->surfaceCloud);
+    auto surface_cloud_ptr_current = thing_to_cloud(cloud_surface_trans, "map");
+    pub_ptr_surface_cloud_current_->publish(*surface_cloud_ptr_current);
+    cloud_all_surface_.insert(
+      cloud_all_surface_.end(), cloud_surface_trans.begin(),
+      cloud_surface_trans.end());
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     image_projection->resetParameters();
   }
@@ -281,7 +185,10 @@ void LoamMapper::process()
 
 void LoamMapper::callback_cloud_surround_out(const LoamMapper::Points & points_surround)
 {
+//  sensor_msgs::msg::PointCloud2::SharedPtr cloud_surround = points_to_cloud(points_surround, "map");
+//  pub_ptr_basic_cloud_current_->publish(*cloud_surround);
   clouds.push_back(points_surround);
+//  std::this_thread::sleep_for(std::chrono::milliseconds(500));
 }
 
 sensor_msgs::msg::PointCloud2::SharedPtr LoamMapper::points_to_cloud(
@@ -325,6 +232,71 @@ void LoamMapper::clear_cloudInfo(utils::Utils::CloudInfo & cloudInfo)
   cloudInfo.start_ring_index.clear();
   cloudInfo.end_ring_index.clear();
   cloudInfo.point_col_index.clear();
+}
+
+LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud) {
+  Points cloud_trans;
+  cloud_trans.resize(cloud.size());
+
+  std::transform(
+    std::execution::par, cloud.cbegin(), cloud.cend(), cloud_trans.begin(),
+    //      std::execution::par, feature_extraction->cornerCloud.cbegin(),
+    //      feature_extraction->cornerCloud.cend(), cloud_trans.begin(),
+    [this](const points_provider::PointsProvider::Point & point) {
+      points_provider::PointsProvider::Point point_trans;
+      loam_mapper::transform_provider::TransformProvider::Pose pose =
+        this->transform_provider->get_pose_at(point.stamp_unix_seconds, point.stamp_nanoseconds);
+
+      geometry_msgs::msg::PoseStamped pose_stamped;
+      pose_stamped.pose = pose.pose_with_covariance.pose;
+      pose_stamped.header.frame_id = "map";
+
+      const auto & pose_ori = pose.pose_with_covariance.pose.orientation;
+      Eigen::Quaterniond quat(pose_ori.w, pose_ori.x, pose_ori.y, pose_ori.z);
+
+      Eigen::Affine3d affine_sensor2map(Eigen::Affine3d::Identity());
+
+      Eigen::Affine3d affine_imu2lidar(Eigen::Affine3d::Identity());
+      affine_imu2lidar.matrix().topLeftCorner<3, 3>() =
+        Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_yaw_), Eigen::Vector3d::UnitZ())
+          .toRotationMatrix() *
+        Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_pitch_), Eigen::Vector3d::UnitY())
+          .toRotationMatrix() *
+        Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_roll_), Eigen::Vector3d::UnitX())
+          .toRotationMatrix();
+
+      if (enable_ned2enu_) {
+        Eigen::Affine3d affine_imu2lidar_enu;
+        affine_imu2lidar_enu.matrix().topLeftCorner<3, 3>() =
+          utils::Utils::ned2enu_converter_for_matrices(
+            affine_imu2lidar.matrix().topLeftCorner<3, 3>());
+
+        affine_sensor2map.matrix().topLeftCorner<3, 3>() =
+          quat.toRotationMatrix() * affine_imu2lidar_enu.rotation();
+
+      } else {
+        affine_sensor2map.matrix().topLeftCorner<3, 3>() =
+          quat.toRotationMatrix() * affine_imu2lidar.rotation();
+      }
+
+      auto & pose_pos = pose_stamped.pose.position;
+      affine_sensor2map.matrix().topRightCorner<3, 1>() << pose_pos.x, pose_pos.y, pose_pos.z;
+
+      Eigen::Vector4d vec_point_in(point.x, point.y, point.z, 1.0);
+      Eigen::Vector4d vec_point_trans = affine_sensor2map.matrix() * vec_point_in;
+
+      point_trans.x = static_cast<float>(vec_point_trans(0));
+      point_trans.y = static_cast<float>(vec_point_trans(1));
+      point_trans.z = static_cast<float>(vec_point_trans(2));
+      point_trans.ring = point.ring;
+      point_trans.horizontal_angle = point.horizontal_angle;
+      point_trans.intensity = point.intensity;
+      point_trans.stamp_unix_seconds = point.stamp_unix_seconds;
+      point_trans.stamp_nanoseconds = point.stamp_nanoseconds;
+
+      return point_trans;
+    });
+  return cloud_trans;
 }
 
 }  // namespace loam_mapper
