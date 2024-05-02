@@ -169,7 +169,7 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       Eigen::AngleAxisd angle_axis_z(
         utils::Utils::deg_to_rad(-in.heading), Eigen::Vector3d::UnitZ());
 
-      Eigen::Matrix3d orientation_enu(angle_axis_x * angle_axis_y * angle_axis_z);
+      Eigen::Matrix3d orientation_enu(angle_axis_z * angle_axis_y * angle_axis_x);
 
 
 //      Eigen::Quaterniond q = (angle_axis_z * angle_axis_y * angle_axis_x);
