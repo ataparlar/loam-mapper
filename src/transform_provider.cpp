@@ -171,8 +171,6 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
 
       Eigen::Matrix3d orientation_enu(angle_axis_z * angle_axis_y * angle_axis_x);
 
-
-//      Eigen::Quaterniond q = (angle_axis_z * angle_axis_y * angle_axis_x);
       Eigen::Quaterniond q(orientation_enu);
       pose.pose_with_covariance.pose.orientation.set__x(q.x());
       pose.pose_with_covariance.pose.orientation.set__y(q.y());

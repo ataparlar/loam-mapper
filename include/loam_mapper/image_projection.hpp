@@ -62,6 +62,7 @@ public:
 
   //  int deskewFlag{};
   cv::Mat rangeMat;
+  cv::Mat rangeMat_vis;
 
   //  bool odomDeskewFlag{};
   //  float odomIncreX{};

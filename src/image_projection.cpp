@@ -8,6 +8,8 @@ namespace loam_mapper::image_projection
 {
 ImageProjection::ImageProjection()
 {
+  rangeMat_vis = (16, 1800, CV_8UC3);
+
   allocateMemory();
   resetParameters();
 }
@@ -50,10 +52,13 @@ void ImageProjection::cloudHandler(
   loam_mapper::transform_provider::TransformProvider::SharedPtr & transform_provider)
 {
   cachePointCloud(laserCloudMsg);
+//  std::cout << "image_projection->cloudInfo.start_ring_index: " << cloudInfo.start_ring_index.size() << std::endl;
 
   projectPointCloud(laserCloudMsg, transform_provider);
 
   cloudExtraction(laserCloudMsg);
+
+//  resetParameters();
 }
 
 void ImageProjection::cachePointCloud(Points & laserCloudMsg)
@@ -69,8 +74,9 @@ void ImageProjection::projectPointCloud(
   Points & laserCloudMsg,
   loam_mapper::transform_provider::TransformProvider::SharedPtr & transform_provider)
 {
+  rangeMat_vis = cv::Mat(16, 1800, CV_32FC3, cv::Scalar(0, 0, 255));
+
   int cloudSize = laserCloudMsg.size();
-  //  std::cout << "laserCloudMsg.size(): " << laserCloudMsg.size() << std::endl;
   for (int i = 0; i < cloudSize; ++i) {
     Point thisPoint;
     thisPoint.x = laserCloudMsg[i].x;
@@ -82,48 +88,27 @@ void ImageProjection::projectPointCloud(
     thisPoint.stamp_unix_seconds = laserCloudMsg[i].stamp_unix_seconds;
     thisPoint.stamp_nanoseconds = laserCloudMsg[i].stamp_nanoseconds;
 
-    //    double pointTime = laserCloudMsg[i].stamp_unix_seconds +
-    //    laserCloudMsg[i].stamp_nanoseconds*10e-9;
-    //
-    //    std::cout << "laserCloudMsg[i].stamp_unix_seconds: " <<
-    //    laserCloudMsg[i].stamp_unix_seconds << std::endl; std::cout <<
-    //    "laserCloudMsg[i].stamp_nanoseconds: " << laserCloudMsg[i].stamp_nanoseconds << std::endl;
-    //    std::cout << "pointTime: " << std::setprecision(18) << pointTime << std::endl;
-    //    std::cout << "\n" << std::endl;
-
     float range =
       sqrt(thisPoint.x * thisPoint.x + thisPoint.y * thisPoint.y + thisPoint.z * thisPoint.z);
 
-    //    std::cout << "range: " << range << std::endl;
+//    std::vector<int> ring_vector{0, 8, 1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15};
 
-//    std::map<int, int> ring_map{
-//      {0, 0}, {1, 8},  {2, 1},  {3, 9},   {4, 2},  {5, 10},  {6, 3},  {7, 11},
-//      {8, 4}, {9, 12}, {10, 5}, {11, 13}, {12, 6}, {13, 14}, {14, 7}, {15, 15},
-//    };
+//    std::vector<int> ring_vector{15, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 0};
+//    int rowIdn = ring_vector.at(thisPoint.ring);
 
-    std::vector<int> ring_vector{0, 8, 1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15};
+    int rowIdn = thisPoint.ring;
 
-    int rowIdn = 15 - ring_vector.at(thisPoint.ring);
-
-    //    if (thisPoint.ring % 2 == 0) {
-    //      rowIdn = thisPoint.ring;
-    //    } else {
-    //      rowIdn = thisPoint.ring + 8;
-    //    }
-
-    //    std::cout << "ring: " << thisPoint.ring << std::endl;
     if (rowIdn < 0 || rowIdn >= 16) continue;
 
     //    if (rowIdn % downsampleRate != 0)
     //      continue;
 
     int columnIdn = -1;
-    float horizonAngle = thisPoint.horizontal_angle;
-    //    float horizonAngle = atan2(thisPoint.x, thisPoint.y) * 180 / M_PI;
+//    float horizonAngle = thisPoint.horizontal_angle;
+        float horizonAngle = atan2(thisPoint.x, thisPoint.y) * 180 / M_PI;
     static float ang_res_x = 360.0 / float(1800);
-    columnIdn = round((horizonAngle) / ang_res_x);
-    //    columnIdn = -round((horizonAngle) / ang_res_x) + 1800.0 / 2;
-    //    std::cout << "columnIdn: " << columnIdn << std::endl;
+//    columnIdn = round((horizonAngle) / ang_res_x);
+    columnIdn = -round((horizonAngle) / ang_res_x) + 1800.0 / 2;
     if (columnIdn >= 1800) columnIdn -= 1800;
 
     //    std::cout << "rowIdn : " << rowIdn << std::endl;
@@ -137,7 +122,16 @@ void ImageProjection::projectPointCloud(
 
     //    auto new_point = deskewPoint(thisPoint, transform_provider);
 
+//    std::vector<float> data_array =  {horizonAngle, range, 1.0};
+
     rangeMat.at<float>(rowIdn, columnIdn) = range;
+    rangeMat_vis.at<float>(rowIdn, columnIdn) = horizonAngle;
+
+    std::cout << "\nrangeMat_vis.at<float>(rowIdn, columnIdn): " << rangeMat_vis.at<float>(rowIdn, columnIdn) << std::endl;
+
+//    for (auto & value : rangeMat_vis.at<std::vector<float>>(rowIdn, columnIdn)) {
+//      std::cout << "value: " << value << std::endl;
+//    }
 
     fullCloud.push_back(thisPoint);
   }
@@ -145,34 +139,34 @@ void ImageProjection::projectPointCloud(
 
 void ImageProjection::cloudExtraction(Points & laserCloudMsg)
 {
+  fullCloud.resize(16 * 1800);
+
+  cloudInfo.start_ring_index.assign(16, 0);
+  cloudInfo.end_ring_index.assign(16, 0);
+
+  cloudInfo.point_col_index.assign(16 * 1800, 0);
+  cloudInfo.point_range.assign(16 * 1800, 0);
+
   int count = 0;
   // extract segmented cloud for lidar odometry
-  //  std::cout << laserCloudMsg.size() << std::endl;
+
   for (int i = 0; i < 16; ++i) {
     cloudInfo.start_ring_index[i] = count - 1 + 5;
-    //    int counter_not_flt_max = 0;
     for (int j = 0; j < 1800; ++j) {
       if (rangeMat.at<float>(i, j) != FLT_MAX) {
         // mark the points' column index for marking occlusion later
         cloudInfo.point_col_index[count] = j;
         // save range info
         cloudInfo.point_range[count] = rangeMat.at<float>(i, j);
-        //        std::cout << "rangeMat.at<float>(i, j): " << rangeMat.at<float>(i, j) <<
-        //        std::endl;
         // save extracted cloud
         extractedCloud.push_back(laserCloudMsg[j + i * 1800]);
         // size of extracted cloud
         ++count;
-        //        counter_not_flt_max++;
       }
     }
-    //    std::cout << "counter_not_flt_max " << counter_not_flt_max << std::endl;
     cloudInfo.end_ring_index[i] = count - 1 - 5;
-
-    //    std::cout << "cloudInfo.start_ring_index[i]: " << cloudInfo.start_ring_index[i] <<
-    //      std::endl; std::cout << "cloudInfo.end_ring_index[i]: " << cloudInfo.end_ring_index[i]
-    //              << "\n" << std::endl;
   }
+//  std::cout << "image_projection->cloudInfo.start_ring_index.size(): " << cloudInfo.start_ring_index.size() << "\n" << std::endl;
 }
 
 void ImageProjection::resetParameters()

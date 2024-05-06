@@ -23,6 +23,7 @@ public:
   using ConstSharedPtr = const std::shared_ptr<LoamMapper>;
   using PointCloud2 = sensor_msgs::msg::PointCloud2;
   using Points = points_provider::PointsProviderBase::Points;
+  using Point = points_provider::PointsProviderBase::Point;
 
 
 
@@ -52,8 +53,14 @@ public:
 private:
   rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_basic_cloud_current_;
   rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_corner_cloud_current_;
+  rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_corner_instant_cloud_current_;
   rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_surface_cloud_current_;
+  rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_surface_instant_cloud_current_;
+  rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_ext_cloud_current_;
+  rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_occ_not_cloud_current_;
+  rclcpp::Publisher<PointCloud2>::SharedPtr pub_ptr_occ_cloud_current_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_ptr_path_;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pub_ptr_cloud_path_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub_ptr_image_;
 
   transform_provider::TransformProvider::SharedPtr transform_provider;
@@ -66,9 +73,28 @@ private:
   PointCloud2::SharedPtr points_to_cloud(const Points & points_bad, const std::string & frame_id);
 
   void callback_cloud_surround_out(const Points & points_surround);
-  sensor_msgs::msg::Image createImageFromRangeMat(const cv::Mat & rangeMat);
+  sensor_msgs::msg::Image createImageFromRangeMat(const cv::Mat & rangeMat, int counter);
   void clear_cloudInfo(utils::Utils::CloudInfo & cloudInfo);
   Points transform_points(Points & cloud);
+
+  struct by_ring_and_angle
+  {
+    inline bool operator() (const Point& point1, const Point& point2)
+    {
+      if (point1.ring == point2.ring){
+        return (point1.horizontal_angle < point2.horizontal_angle);
+      } else {
+        return (point1.ring < point2.ring);
+      }
+    }
+  };
+  struct by_angle
+  {
+    inline bool operator() (const Point& point1, const Point& point2)
+    {
+      return (point1.horizontal_angle < point2.horizontal_angle);
+    }
+  };
 
 };
 

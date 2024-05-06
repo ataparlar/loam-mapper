@@ -7,6 +7,7 @@
 
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include <visualization_msgs/msg/marker_array.hpp>
+#include <nav_msgs/msg/path.hpp>
 
 #include <boost/filesystem.hpp>
 
@@ -43,9 +44,12 @@ public:
 
   explicit FeatureExtraction();
 
+  Points cloudOccluded;
+  Points cloudOccludedNot;
   Points extractedCloud;
   Points cornerCloud;
   Points surfaceCloud;
+  nav_msgs::msg::Path cloudPath;
 
   std::vector<smoothness_t> cloudSmoothness;
   float * cloudCurvature;

@@ -245,7 +245,10 @@ void ContinuousPacketParser::process_packet_into_cloud(
           point.y = dist_xy * std::cos(angle_rad_azimuth_point);
           point.z = dist_m * std::sin(angle_rad_vertical);
           point.intensity = data_point.reflectivity;
-          point.ring = ind_point % 16;
+//          point.ring = ind_point % 16;
+//          std::vector<int> ring_vector{0, 8, 1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15};
+          std::vector<int> ring_vector{15, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 0};
+          point.ring = ring_vector.at(ind_point % 16);
 //          std::cout << "point.ring: " << point.ring << "\tvertical angle: " << angle_deg_vertical << "\tdist: " << dist_m << std::endl;
           point.horizontal_angle = angle_deg_azimuth_point;
           point.stamp_unix_seconds =

@@ -15,6 +15,9 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl_conversions/pcl_conversions.h>
 
+#include <cv_bridge/cv_bridge.h>
+#include <sensor_msgs/Image.h>
+
 #include <cstdint>
 #include <execution>
 #include <memory>
@@ -59,7 +62,11 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   pub_ptr_basic_cloud_current_ = this->create_publisher<PointCloud2>("basic_cloud_current", 10);
   pub_ptr_corner_cloud_current_ = this->create_publisher<PointCloud2>("corner_cloud_current", 10);
   pub_ptr_surface_cloud_current_ = this->create_publisher<PointCloud2>("surface_cloud_current", 10);
+  pub_ptr_ext_cloud_current_ = this->create_publisher<PointCloud2>("ext_cloud_current", 10);
+  pub_ptr_occ_not_cloud_current_ = this->create_publisher<PointCloud2>("occ_not_cloud_current", 10);
+  pub_ptr_occ_cloud_current_ = this->create_publisher<PointCloud2>("occ_cloud_current", 10);
   pub_ptr_path_ = this->create_publisher<nav_msgs::msg::Path>("vehicle_path", 10);
+  pub_ptr_cloud_path_ = this->create_publisher<nav_msgs::msg::Path>("cloud_path", 10);
   pub_ptr_image_ = this->create_publisher<sensor_msgs::msg::Image>("rangeMat", 10);
 
   transform_provider = std::make_shared<transform_provider::TransformProvider>(
@@ -102,19 +109,48 @@ void LoamMapper::process()
 
   nav_msgs::msg::Path path_;
   path_.header.frame_id = "map";
+  path_.header.stamp = this->get_clock()->now();
   path_.poses.resize(transform_provider->poses_.size());
+
+  for (auto & pose : transform_provider->poses_) {
+    geometry_msgs::msg::PoseStamped poseStamped;
+    poseStamped.header.frame_id = "map";
+    poseStamped.header.stamp = this->get_clock()->now();
+    poseStamped.pose = pose.pose_with_covariance.pose;
+    path_.poses.push_back(poseStamped);
+  }
+  pub_ptr_path_->publish(path_);
 
   points_provider::PointsProvider::Points cloud_all;
   points_provider::PointsProvider::Points cloud_all_corner_;
   points_provider::PointsProvider::Points cloud_all_surface_;
 
+  int counter = 0;
   for (auto & cloud : clouds) {
+
+
+
+    std::sort(cloud.begin(), cloud.end(), by_ring_and_angle());
+    std::sort(cloud.begin(), cloud.end(), by_ring_and_angle());
+
     //    image_projection->setLaserCloudIn(cloud_trans);
 
     image_projection->cloudHandler(cloud, transform_provider);
-    sensor_msgs::msg::Image image = createImageFromRangeMat(image_projection->rangeMat);
+    sensor_msgs::msg::Image image = createImageFromRangeMat(image_projection->rangeMat, counter);
+
+
+//    std::cout << "image_projection->cloudInfo.start_ring_index: " << image_projection->cloudInfo.start_ring_index.size() << std::endl;
+//    for (auto a : image_projection->cloudInfo.point_col_index){
+//      std::cout << "a: " << a << std::endl;
+//    }
 
     feature_extraction->laserCloudInfoHandler(cloud, image_projection->cloudInfo);
+
+    pub_ptr_cloud_path_->publish(feature_extraction->cloudPath);
+    feature_extraction->cloudPath.poses.clear();
+
+
+    image_projection->resetParameters();
 
 
 
@@ -123,6 +159,25 @@ void LoamMapper::process()
     pub_ptr_basic_cloud_current_->publish(*cloud_ptr_current);
     pub_ptr_image_->publish(image);
     cloud_all.insert(cloud_all.end(), cloud_trans.begin(), cloud_trans.end());
+
+
+
+    Points occ_cloud_not = transform_points(feature_extraction->cloudOccludedNot);
+    auto occ_not_cloud_ptr_current = thing_to_cloud(occ_cloud_not, "map");
+    pub_ptr_occ_not_cloud_current_->publish(*occ_not_cloud_ptr_current);
+    feature_extraction->cloudOccludedNot.clear();
+
+    Points occ_cloud_trans = transform_points(feature_extraction->cloudOccluded);
+    auto occ_cloud_ptr_current = thing_to_cloud(occ_cloud_trans, "map");
+    pub_ptr_occ_cloud_current_->publish(*occ_cloud_ptr_current);
+    feature_extraction->cloudOccluded.clear();
+
+    Points ext_trans = transform_points(feature_extraction->extractedCloud);
+    auto ext_cloud_ptr_current = thing_to_cloud(ext_trans, "map");
+    pub_ptr_ext_cloud_current_->publish(*ext_cloud_ptr_current);
+
+
+
 
 
     Points cloud_corner_trans = transform_points(feature_extraction->cornerCloud);
@@ -140,9 +195,9 @@ void LoamMapper::process()
       cloud_all_surface_.end(), cloud_surface_trans.begin(),
       cloud_surface_trans.end());
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(400));
 
-    image_projection->resetParameters();
+    counter++;
   }
 
   if (save_pcd_) {
@@ -207,9 +262,44 @@ sensor_msgs::msg::PointCloud2::SharedPtr LoamMapper::points_to_cloud(
   return cloud_ptr_current;
 }
 
-sensor_msgs::msg::Image LoamMapper::createImageFromRangeMat(const cv::Mat & rangeMat)
+sensor_msgs::msg::Image LoamMapper::createImageFromRangeMat(const cv::Mat & rangeMat, int counter)
 {
+//  cv_bridge::CvImage cv_image;
+//  cv::Mat BGRImage;
+//  cv::Mat HSVImage;
+//
+//  cv_image.image = rangeMat;
+//  std::cout << "rangeMat.size: " << rangeMat.size << std::endl;
+//
+//  cv::cvtColor(rangeMat, BGRImage, CV_GRAY2BGR);
+//  cv::cvtColor(BGRImage, HSVImage, CV_BGR2HSV);
+//
+//
+//  cv::Mat new_img;
+//  cv::resize(HSVImage, new_img, cv::Size(), 1.0, 20.0);
+//
+////  imshow("Display window", HSVImage);
+//  std::string image_name = "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/images/" + std::to_string(counter) + ".png";
+//  imwrite(image_name, new_img);
+
+//  std::cout << HSVImage.data << std::endl;
+
+//  cv_ptr->image_ptr = BGRImage;
+//  cv_ptr->image_ptr = HSVImage;
+
+//  sensor_msgs::msg::Image::SharedPtr old_image;
+//  old_image = cv_ptr->toImageMsg();
+
+//  cv_image.header.stamp = this->get_clock()->now();
+//  cv_image.header.frame_id = "map";
+//  cv_image.encoding = "mono8";
+//  cv_image.image = rangeMat;
+//
+//  std::cout << cv_image.encoding << std::endl;
+//
+  sensor_msgs::msg::Image::SharedPtr image_ptr;
   sensor_msgs::msg::Image image;
+//  image_ptr = cv_image.toImageMsg();
   image.header.stamp = this->get_clock()->now();
   image.header.frame_id = "map";
   image.height = 480;
@@ -219,10 +309,17 @@ sensor_msgs::msg::Image LoamMapper::createImageFromRangeMat(const cv::Mat & rang
   for (int i = 0; i < 16; i++) {
     for (int a = 0; a < 30; a++) {
       for (int j = 0; j < 1800; j++) {
+//        image_ptr->data->push_back(rangeMat.at<char>(i, j));
         image.data.push_back(rangeMat.at<char>(i, j));
       }
     }
   }
+
+//  for (auto data : image_ptr->data) {
+//    std::cout << data << std::endl;
+//  }
+
+
   return image;
 }
 
