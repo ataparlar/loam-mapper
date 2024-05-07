@@ -62,7 +62,7 @@ public:
 
   //  int deskewFlag{};
   cv::Mat rangeMat;
-  cv::Mat rangeMat_vis;
+//  cv::Mat image_vis;
 
   //  bool odomDeskewFlag{};
   //  float odomIncreX{};
@@ -81,9 +81,7 @@ public:
 
   void imuHandler(const transform_provider::TransformProvider::Imu & imuMsg);
   void odomHandler(const nav_msgs::msg::Odometry odometryMsg);
-  void cloudHandler(
-    Points & laserCloudMsg,
-    loam_mapper::transform_provider::TransformProvider::SharedPtr & transform_provider);
+  void cloudHandler(Points & laserCloudMsg);
 
   void cachePointCloud(Points & laserCloudMsg);
   //  bool deskewInfo();
@@ -94,9 +92,7 @@ public:
   Point deskewPoint(
     Point & point,
     loam_mapper::transform_provider::TransformProvider::SharedPtr & transform_provider);
-  void projectPointCloud(
-    Points & laserCloudMsg,
-    loam_mapper::transform_provider::TransformProvider::SharedPtr & transform_provider);
+  void projectPointCloud(Points & laserCloudMsg);
   void cloudExtraction(Points & laserCloudMsg);
   //  void publishClouds();
   void resetParameters();

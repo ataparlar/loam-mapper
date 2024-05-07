@@ -69,6 +69,7 @@ private:
   feature_extraction::FeatureExtraction::SharedPtr feature_extraction;
 
   Eigen::Affine3f transStartInverse;
+  cv::Scalar scalar;
   
   PointCloud2::SharedPtr points_to_cloud(const Points & points_bad, const std::string & frame_id);
 
@@ -76,6 +77,7 @@ private:
   sensor_msgs::msg::Image createImageFromRangeMat(const cv::Mat & rangeMat, int counter);
   void clear_cloudInfo(utils::Utils::CloudInfo & cloudInfo);
   Points transform_points(Points & cloud);
+  sensor_msgs::msg::Image prepareVisImage(Points laserCloudMsg, int counter);
 
   struct by_ring_and_angle
   {

@@ -135,8 +135,12 @@ void LoamMapper::process()
 
     //    image_projection->setLaserCloudIn(cloud_trans);
 
-    image_projection->cloudHandler(cloud, transform_provider);
-    sensor_msgs::msg::Image image = createImageFromRangeMat(image_projection->rangeMat, counter);
+    image_projection->cloudHandler(cloud);
+
+//    cv::Mat image_vis = cv::Mat(16, 1800, CV_32FC3);
+    sensor_msgs::msg::Image hsv_image = prepareVisImage(cloud, counter);
+
+//    sensor_msgs::msg::Image image = createImageFromRangeMat(image_projection->rangeMat, counter);
 
 
 //    std::cout << "image_projection->cloudInfo.start_ring_index: " << image_projection->cloudInfo.start_ring_index.size() << std::endl;
@@ -157,7 +161,7 @@ void LoamMapper::process()
     Points cloud_trans = transform_points(cloud);
     auto cloud_ptr_current = thing_to_cloud(cloud_trans, "map");
     pub_ptr_basic_cloud_current_->publish(*cloud_ptr_current);
-    pub_ptr_image_->publish(image);
+    pub_ptr_image_->publish(hsv_image);
     cloud_all.insert(cloud_all.end(), cloud_trans.begin(), cloud_trans.end());
 
 
@@ -195,7 +199,7 @@ void LoamMapper::process()
       cloud_all_surface_.end(), cloud_surface_trans.begin(),
       cloud_surface_trans.end());
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(400));
+    std::this_thread::sleep_for(std::chrono::milliseconds(800));
 
     counter++;
   }
@@ -394,6 +398,103 @@ LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud) {
       return point_trans;
     });
   return cloud_trans;
+}
+
+sensor_msgs::msg::Image LoamMapper::prepareVisImage(Points laserCloudMsg, int counter) {
+
+  cv::Mat H(16, 1800, CV_32FC1, cv::Scalar::all(FLT_MAX));
+  cv::Mat S(16, 1800, CV_32FC1, cv::Scalar::all(FLT_MAX));
+  cv::Mat V(16, 1800, CV_32FC1, cv::Scalar::all(FLT_MAX));
+//  cv::Mat HSV(16, 1800, CV_8UC3, 1.0);
+  cv::Mat HSV(16, 1800, CV_32FC3, cv::Scalar::all(FLT_MAX));
+  cv::Mat mono(16, 1800, CV_32FC1, cv::Scalar::all(FLT_MAX));
+
+//  std::cout << "H: " << H << std::endl;
+
+//  std::vector<int> columnIds;
+//  std::vector<int> rowIds;
+//  std::vector<float> horizontal_angles;
+
+  int cloudSize = laserCloudMsg.size();
+
+  for (int i = 0; i < cloudSize; ++i) {
+      Point thisPoint;
+      thisPoint.x = laserCloudMsg[i].x;
+      thisPoint.y = laserCloudMsg[i].y;
+      thisPoint.z = laserCloudMsg[i].z;
+      thisPoint.intensity = laserCloudMsg[i].intensity;
+      thisPoint.horizontal_angle = laserCloudMsg[i].horizontal_angle;
+      thisPoint.ring = laserCloudMsg[i].ring;
+      thisPoint.stamp_unix_seconds = laserCloudMsg[i].stamp_unix_seconds;
+      thisPoint.stamp_nanoseconds = laserCloudMsg[i].stamp_nanoseconds;
+
+      float range =
+        sqrt(thisPoint.x * thisPoint.x + thisPoint.y * thisPoint.y + thisPoint.z * thisPoint.z);
+
+      int rowIdn = thisPoint.ring;
+
+      if (rowIdn < 0 || rowIdn >= 16) continue;
+
+      int columnIdn = -1;
+//      float horizonAngle = thisPoint.horizontal_angle;
+              float horizonAngle = (atan2(thisPoint.x, thisPoint.y) * 180 / M_PI);
+      static float ang_res_x = 360.0 / float(1800);
+//      columnIdn = round((horizonAngle) / ang_res_x);
+          columnIdn = -round((horizonAngle-90) / ang_res_x) + 1800.0 / 2;
+      if (columnIdn >= 1800) columnIdn -= 1800;
+      if (columnIdn < 0 || columnIdn >= 1800) continue;
+
+      if (H.at<float>(rowIdn, columnIdn) != FLT_MAX) continue;
+      if (S.at<float>(rowIdn, columnIdn) != FLT_MAX) continue;
+      if (V.at<float>(rowIdn, columnIdn) != FLT_MAX) continue;
+
+      int value = (thisPoint.intensity * 360) / 64;
+      if (value >= 360) {
+        value = (thisPoint.intensity * 360) / 255;
+      }
+
+      mono.at<float>(rowIdn, columnIdn) = (range * 360) / 60;
+      H.at<float>(rowIdn, columnIdn) = (range * 360) / 60;
+      S.at<float>(rowIdn, columnIdn) = 1.0;
+      V.at<float>(rowIdn, columnIdn) = 1.0;
+  }
+
+  std::vector<cv::Mat> hsv_elements{H, S, V};
+  merge(hsv_elements, HSV);
+
+    cv::Mat BGRImage(16, 1800, CV_32FC3, cv::Scalar::all(FLT_MAX));
+    cv::Mat RGBImage(16, 1800, CV_32FC3, cv::Scalar::all(FLT_MAX));
+
+
+
+
+
+
+    cv::cvtColor(HSV, RGBImage, CV_HSV2RGB);
+//    cv::cvtColor(BGRImage, RGBImage, CV_BGR2RGB);
+
+    std::string image_name = "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/images/" + std::to_string(counter) + ".png";
+    imwrite(image_name, HSV);
+
+    std::cout << RGBImage.data << std::endl;
+
+    sensor_msgs::msg::Image image;
+    image.header.stamp = this->get_clock()->now();
+    image.header.frame_id = "map";
+    image.height = 480;
+    image.width = 1800;
+    image.step = RGBImage.step;
+    image.encoding = "rgb8";
+    for (int i = 0; i < 16; i++) {
+        for (int a = 0; a < 30; a++) {
+            for (int j = 0; j < 5400; j++) {
+                //          image_ptr->data->push_back(rangeMat.at<char>(i, j));
+                image.data.push_back(RGBImage.at<char>(i, j));
+            }
+        }
+    }
+
+    return image;
 }
 
 }  // namespace loam_mapper

@@ -8,8 +8,6 @@ namespace loam_mapper::image_projection
 {
 ImageProjection::ImageProjection()
 {
-  rangeMat_vis = (16, 1800, CV_8UC3);
-
   allocateMemory();
   resetParameters();
 }
@@ -47,14 +45,12 @@ void ImageProjection::odomHandler(const nav_msgs::msg::Odometry odometryMsg)
   odomQueue.push_back(odometryMsg);
 }
 
-void ImageProjection::cloudHandler(
-  Points & laserCloudMsg,
-  loam_mapper::transform_provider::TransformProvider::SharedPtr & transform_provider)
+void ImageProjection::cloudHandler(Points & laserCloudMsg)
 {
   cachePointCloud(laserCloudMsg);
 //  std::cout << "image_projection->cloudInfo.start_ring_index: " << cloudInfo.start_ring_index.size() << std::endl;
 
-  projectPointCloud(laserCloudMsg, transform_provider);
+  projectPointCloud(laserCloudMsg);
 
   cloudExtraction(laserCloudMsg);
 
@@ -70,12 +66,8 @@ void ImageProjection::cachePointCloud(Points & laserCloudMsg)
   cloudQueue.pop_front();
 }
 
-void ImageProjection::projectPointCloud(
-  Points & laserCloudMsg,
-  loam_mapper::transform_provider::TransformProvider::SharedPtr & transform_provider)
+void ImageProjection::projectPointCloud(Points & laserCloudMsg)
 {
-  rangeMat_vis = cv::Mat(16, 1800, CV_32FC3, cv::Scalar(0, 0, 255));
-
   int cloudSize = laserCloudMsg.size();
   for (int i = 0; i < cloudSize; ++i) {
     Point thisPoint;
@@ -91,11 +83,6 @@ void ImageProjection::projectPointCloud(
     float range =
       sqrt(thisPoint.x * thisPoint.x + thisPoint.y * thisPoint.y + thisPoint.z * thisPoint.z);
 
-//    std::vector<int> ring_vector{0, 8, 1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15};
-
-//    std::vector<int> ring_vector{15, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 0};
-//    int rowIdn = ring_vector.at(thisPoint.ring);
-
     int rowIdn = thisPoint.ring;
 
     if (rowIdn < 0 || rowIdn >= 16) continue;
@@ -104,17 +91,12 @@ void ImageProjection::projectPointCloud(
     //      continue;
 
     int columnIdn = -1;
-//    float horizonAngle = thisPoint.horizontal_angle;
-        float horizonAngle = atan2(thisPoint.x, thisPoint.y) * 180 / M_PI;
+    float horizonAngle = thisPoint.horizontal_angle;
+//        float horizonAngle = atan2(thisPoint.x, thisPoint.y) * 180 / M_PI;
     static float ang_res_x = 360.0 / float(1800);
-//    columnIdn = round((horizonAngle) / ang_res_x);
-    columnIdn = -round((horizonAngle) / ang_res_x) + 1800.0 / 2;
+    columnIdn = round((horizonAngle) / ang_res_x);
+//    columnIdn = -round((horizonAngle) / ang_res_x) + 1800.0 / 2;
     if (columnIdn >= 1800) columnIdn -= 1800;
-
-    //    std::cout << "rowIdn : " << rowIdn << std::endl;
-    //    std::cout << "columnId : " << columnIdn << std::endl;
-    //    std::cout << "horizonAngle : " << horizonAngle << std::endl;
-
     if (columnIdn < 0 || columnIdn >= 1800) continue;
 
     // project the point cloud into 2d projection. make a depth map from it.
@@ -122,20 +104,15 @@ void ImageProjection::projectPointCloud(
 
     //    auto new_point = deskewPoint(thisPoint, transform_provider);
 
-//    std::vector<float> data_array =  {horizonAngle, range, 1.0};
-
     rangeMat.at<float>(rowIdn, columnIdn) = range;
-    rangeMat_vis.at<float>(rowIdn, columnIdn) = horizonAngle;
-
-    std::cout << "\nrangeMat_vis.at<float>(rowIdn, columnIdn): " << rangeMat_vis.at<float>(rowIdn, columnIdn) << std::endl;
-
-//    for (auto & value : rangeMat_vis.at<std::vector<float>>(rowIdn, columnIdn)) {
-//      std::cout << "value: " << value << std::endl;
-//    }
 
     fullCloud.push_back(thisPoint);
   }
 }
+
+
+
+
 
 void ImageProjection::cloudExtraction(Points & laserCloudMsg)
 {
