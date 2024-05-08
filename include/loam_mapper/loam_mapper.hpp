@@ -78,6 +78,8 @@ private:
   void clear_cloudInfo(utils::Utils::CloudInfo & cloudInfo);
   Points transform_points(Points & cloud);
   sensor_msgs::msg::Image prepareVisImage(Points laserCloudMsg, int counter);
+  sensor_msgs::msg::Image testImageRgb();
+  sensor_msgs::msg::Image testImageHsv();
 
   struct by_ring_and_angle
   {

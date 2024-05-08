@@ -138,7 +138,10 @@ void LoamMapper::process()
     image_projection->cloudHandler(cloud);
 
 //    cv::Mat image_vis = cv::Mat(16, 1800, CV_32FC3);
-    sensor_msgs::msg::Image hsv_image = prepareVisImage(cloud, counter);
+//    sensor_msgs::msg::Image hsv_image = prepareVisImage(cloud, counter);
+    sensor_msgs::msg::Image hsv_image = testImageRgb();
+
+    std::cout << "hsv_image.step: " << hsv_image.step << std::endl;
 
 //    sensor_msgs::msg::Image image = createImageFromRangeMat(image_projection->rangeMat, counter);
 
@@ -470,8 +473,8 @@ sensor_msgs::msg::Image LoamMapper::prepareVisImage(Points laserCloudMsg, int co
 
 
 
-    cv::cvtColor(HSV, RGBImage, CV_HSV2RGB);
-//    cv::cvtColor(BGRImage, RGBImage, CV_BGR2RGB);
+    cv::cvtColor(mono, RGBImage, CV_GRAY2RGB);
+//    cv::cvtColor(BGRImage, RGBImage, CV_RGB2HSV);
 
     std::string image_name = "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/images/" + std::to_string(counter) + ".png";
     imwrite(image_name, HSV);
@@ -496,6 +499,112 @@ sensor_msgs::msg::Image LoamMapper::prepareVisImage(Points laserCloudMsg, int co
 
     return image;
 }
+
+
+
+sensor_msgs::msg::Image LoamMapper::testImageRgb() {
+
+
+
+  // RGB
+  cv::Mat R(256, 256, CV_16FC1);
+  cv::Mat G(256, 256, CV_16FC1);
+  cv::Mat B(256, 256, CV_16FC1);
+  cv::Mat RGB = cv::Mat::zeros(256, 256, CV_16FC3);
+
+  for (int i = 0; i < 256; i++) {
+    for (int j = 0; j < 256; j++) {
+      R.at<float>(i, j) = 0.0;
+      G.at<float>(i, j) = 254.0;
+      B.at<float>(i, j) = 0.0;
+    }
+  }
+
+  std::vector<cv::Mat> matrices = {R, G, B};
+  cv::merge(matrices, RGB);
+
+  std::cout << "\nRGB.size: " << RGB.size << std::endl;
+  std::cout << "RGB.step: " << RGB.step << std::endl;
+  std::cout << "RGB.dims: " << RGB.dims << std::endl;
+  std::cout << "RGB.cols: " << RGB.cols << std::endl;
+  std::cout << "RGB.rows: " << RGB.rows << std::endl;
+  std::cout << "RGB.u: " << RGB.u << std::endl;
+  std::cout << "RGB.dataend: " << RGB.dataend << std::endl;
+  std::cout << "RGB.datastart: " << RGB.datastart << std::endl;
+  std::cout << "RGB.datalimit: " << RGB.datalimit << std::endl;
+  std::cout << "RGB.data: " << RGB.data << std::endl;
+
+
+  cv_bridge::CvImage cv_image;
+  cv_image.header.frame_id = "map";
+  cv_image.header.stamp = this->get_clock()->now();
+  cv_image.encoding = "rgb16";
+  cv_image.image = RGB;
+
+
+  sensor_msgs::msg::Image image;
+  cv_image.toImageMsg(image);
+
+
+//  std::string image_name = "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/images/a.png";
+//  imwrite(image_name, RGB);
+
+//  image.header = image_ptr->header;
+//  image.step = image_ptr->step;
+//  image.encoding = image_ptr->encoding;
+//  image.data = image_ptr->data;
+//  image.width = image_ptr->width;
+//  image.height = image_ptr->height;
+//  image.is_bigendian = image_ptr->is_bigendian;
+
+  std::cout << "image.step: " << image.step << std::endl;
+
+  return image;
+}
+
+
+
+sensor_msgs::msg::Image LoamMapper::testImageHsv() {
+
+  // HSV
+
+  //  cv::Mat H(720, 720, CV_32FC1, cv::Scalar::all(FLT_MAX));
+  //  cv::Mat S(720, 720, CV_32FC1, 1.0);
+  //  cv::Mat V(720, 720, CV_32FC1, 1.0);
+  //  cv::Mat HSV(720, 720, CV_32FC3, cv::Scalar(200.0, 1.0, 1.0));
+  //
+  //    for (int i = 0; i < 720; i++) {
+  //      for (int j = 0; j < 720; j++) {
+  //        H.at<float>(i, j) = j/2;
+  //        H.at<float>(i, j) = 1.0;
+  //        H.at<float>(i, j) = 1.0;
+  //      }
+  //    }
+  //  std::vector<cv::Mat> matrices = {H, S, V};
+  //  std::vector<cv::Mat> matrices = {R, G, B};
+
+  //  cv::merge(matrices, HSV);
+
+
+  //  cv::Mat RGB;
+  //  cv::cvtColor(HSV, RGB, CV_HSV2RGB);
+
+
+
+  //  for (int i = 0; i < 720; i++) {
+  //      for (int j = 0; j < 2160; j++) {
+  ////        image_ptr->data->push_back(rangeMat.at<char>(i, j));
+  //        image.data.push_back(RGB.at<char>(i, j));
+  //      }
+  //  }
+
+
+  //  std::cout << "\HSV.data: " << HSV.data << std::endl;
+
+}
+
+
+
 
 }  // namespace loam_mapper
 
