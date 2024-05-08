@@ -507,15 +507,15 @@ sensor_msgs::msg::Image LoamMapper::testImageRgb() {
 
 
   // RGB
-  cv::Mat R(256, 256, CV_16FC1);
-  cv::Mat G(256, 256, CV_16FC1);
-  cv::Mat B(256, 256, CV_16FC1);
-  cv::Mat RGB = cv::Mat::zeros(256, 256, CV_16FC3);
+  cv::Mat R(256, 256, CV_32FC1);
+  cv::Mat G(256, 256, CV_32FC1);
+  cv::Mat B(256, 256, CV_32FC1);
+  cv::Mat RGB = cv::Mat::zeros(256, 256, CV_32FC3);
 
   for (int i = 0; i < 256; i++) {
     for (int j = 0; j < 256; j++) {
       R.at<float>(i, j) = 0.0;
-      G.at<float>(i, j) = 254.0;
+      G.at<float>(i, j) = 255.0;
       B.at<float>(i, j) = 0.0;
     }
   }
@@ -523,39 +523,31 @@ sensor_msgs::msg::Image LoamMapper::testImageRgb() {
   std::vector<cv::Mat> matrices = {R, G, B};
   cv::merge(matrices, RGB);
 
-  std::cout << "\nRGB.size: " << RGB.size << std::endl;
-  std::cout << "RGB.step: " << RGB.step << std::endl;
-  std::cout << "RGB.dims: " << RGB.dims << std::endl;
-  std::cout << "RGB.cols: " << RGB.cols << std::endl;
-  std::cout << "RGB.rows: " << RGB.rows << std::endl;
-  std::cout << "RGB.u: " << RGB.u << std::endl;
-  std::cout << "RGB.dataend: " << RGB.dataend << std::endl;
-  std::cout << "RGB.datastart: " << RGB.datastart << std::endl;
-  std::cout << "RGB.datalimit: " << RGB.datalimit << std::endl;
-  std::cout << "RGB.data: " << RGB.data << std::endl;
+  cv::Mat gray;
+  cv::cvtColor(RGB, gray, CV_RGB2GRAY);
+
+
+  std::cout << "\ngray.size: " << gray.size << std::endl;
+  std::cout << "gray.step: " << gray.step << std::endl;
+  std::cout << "gray.dims: " << gray.dims << std::endl;
+  std::cout << "gray.cols: " << gray.cols << std::endl;
+  std::cout << "gray.rows: " << gray.rows << std::endl;
+//  std::cout << "gray.u: " << gray.u << std::endl;
+//  std::cout << "gray.dataend: " << gray.dataend << std::endl;
+//  std::cout << "gray.datastart: " << gray.datastart << std::endl;
+//  std::cout << "gray.datalimit: " << gray.datalimit << std::endl;
+//  std::cout << "gray.data: " << gray.data << std::endl;
 
 
   cv_bridge::CvImage cv_image;
   cv_image.header.frame_id = "map";
   cv_image.header.stamp = this->get_clock()->now();
-  cv_image.encoding = "rgb16";
-  cv_image.image = RGB;
+  cv_image.encoding = "mono8";
+  cv_image.image = gray;
 
 
   sensor_msgs::msg::Image image;
   cv_image.toImageMsg(image);
-
-
-//  std::string image_name = "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/images/a.png";
-//  imwrite(image_name, RGB);
-
-//  image.header = image_ptr->header;
-//  image.step = image_ptr->step;
-//  image.encoding = image_ptr->encoding;
-//  image.data = image_ptr->data;
-//  image.width = image_ptr->width;
-//  image.height = image_ptr->height;
-//  image.is_bigendian = image_ptr->is_bigendian;
 
   std::cout << "image.step: " << image.step << std::endl;
 
