@@ -125,10 +125,7 @@ void LoamMapper::process()
   points_provider::PointsProvider::Points cloud_all_corner_;
   points_provider::PointsProvider::Points cloud_all_surface_;
 
-  int counter = 0;
   for (auto & cloud : clouds) {
-
-
 
     std::sort(cloud.begin(), cloud.end(), by_ring_and_angle());
     std::sort(cloud.begin(), cloud.end(), by_ring_and_angle());
@@ -137,19 +134,7 @@ void LoamMapper::process()
 
     image_projection->cloudHandler(cloud);
 
-//    cv::Mat image_vis = cv::Mat(16, 1800, CV_32FC3);
-//    sensor_msgs::msg::Image hsv_image = prepareVisImage(cloud, counter);
-    sensor_msgs::msg::Image hsv_image = testImageRgb();
-
-    std::cout << "hsv_image.step: " << hsv_image.step << std::endl;
-
-//    sensor_msgs::msg::Image image = createImageFromRangeMat(image_projection->rangeMat, counter);
-
-
-//    std::cout << "image_projection->cloudInfo.start_ring_index: " << image_projection->cloudInfo.start_ring_index.size() << std::endl;
-//    for (auto a : image_projection->cloudInfo.point_col_index){
-//      std::cout << "a: " << a << std::endl;
-//    }
+    sensor_msgs::msg::Image hsv_image = prepareVisImage(cloud);
 
     feature_extraction->laserCloudInfoHandler(cloud, image_projection->cloudInfo);
 
@@ -203,8 +188,6 @@ void LoamMapper::process()
       cloud_surface_trans.end());
 
     std::this_thread::sleep_for(std::chrono::milliseconds(800));
-
-    counter++;
   }
 
   if (save_pcd_) {
@@ -267,67 +250,6 @@ sensor_msgs::msg::PointCloud2::SharedPtr LoamMapper::points_to_cloud(
         point_bad.x, point_bad.y, point_bad.z, static_cast<float>(point_bad.intensity)};
     });
   return cloud_ptr_current;
-}
-
-sensor_msgs::msg::Image LoamMapper::createImageFromRangeMat(const cv::Mat & rangeMat, int counter)
-{
-//  cv_bridge::CvImage cv_image;
-//  cv::Mat BGRImage;
-//  cv::Mat HSVImage;
-//
-//  cv_image.image = rangeMat;
-//  std::cout << "rangeMat.size: " << rangeMat.size << std::endl;
-//
-//  cv::cvtColor(rangeMat, BGRImage, CV_GRAY2BGR);
-//  cv::cvtColor(BGRImage, HSVImage, CV_BGR2HSV);
-//
-//
-//  cv::Mat new_img;
-//  cv::resize(HSVImage, new_img, cv::Size(), 1.0, 20.0);
-//
-////  imshow("Display window", HSVImage);
-//  std::string image_name = "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/images/" + std::to_string(counter) + ".png";
-//  imwrite(image_name, new_img);
-
-//  std::cout << HSVImage.data << std::endl;
-
-//  cv_ptr->image_ptr = BGRImage;
-//  cv_ptr->image_ptr = HSVImage;
-
-//  sensor_msgs::msg::Image::SharedPtr old_image;
-//  old_image = cv_ptr->toImageMsg();
-
-//  cv_image.header.stamp = this->get_clock()->now();
-//  cv_image.header.frame_id = "map";
-//  cv_image.encoding = "mono8";
-//  cv_image.image = rangeMat;
-//
-//  std::cout << cv_image.encoding << std::endl;
-//
-  sensor_msgs::msg::Image::SharedPtr image_ptr;
-  sensor_msgs::msg::Image image;
-//  image_ptr = cv_image.toImageMsg();
-  image.header.stamp = this->get_clock()->now();
-  image.header.frame_id = "map";
-  image.height = 480;
-  image.width = 1800;
-  image.step = rangeMat.step;
-  image.encoding = "mono8";
-  for (int i = 0; i < 16; i++) {
-    for (int a = 0; a < 30; a++) {
-      for (int j = 0; j < 1800; j++) {
-//        image_ptr->data->push_back(rangeMat.at<char>(i, j));
-        image.data.push_back(rangeMat.at<char>(i, j));
-      }
-    }
-  }
-
-//  for (auto data : image_ptr->data) {
-//    std::cout << data << std::endl;
-//  }
-
-
-  return image;
 }
 
 void LoamMapper::clear_cloudInfo(utils::Utils::CloudInfo & cloudInfo)
@@ -403,20 +325,12 @@ LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud) {
   return cloud_trans;
 }
 
-sensor_msgs::msg::Image LoamMapper::prepareVisImage(Points laserCloudMsg, int counter) {
+sensor_msgs::msg::Image LoamMapper::prepareVisImage(Points laserCloudMsg) {
 
   cv::Mat H(16, 1800, CV_32FC1, cv::Scalar::all(FLT_MAX));
   cv::Mat S(16, 1800, CV_32FC1, cv::Scalar::all(FLT_MAX));
   cv::Mat V(16, 1800, CV_32FC1, cv::Scalar::all(FLT_MAX));
-//  cv::Mat HSV(16, 1800, CV_8UC3, 1.0);
   cv::Mat HSV(16, 1800, CV_32FC3, cv::Scalar::all(FLT_MAX));
-  cv::Mat mono(16, 1800, CV_32FC1, cv::Scalar::all(FLT_MAX));
-
-//  std::cout << "H: " << H << std::endl;
-
-//  std::vector<int> columnIds;
-//  std::vector<int> rowIds;
-//  std::vector<float> horizontal_angles;
 
   int cloudSize = laserCloudMsg.size();
 
@@ -439,11 +353,11 @@ sensor_msgs::msg::Image LoamMapper::prepareVisImage(Points laserCloudMsg, int co
       if (rowIdn < 0 || rowIdn >= 16) continue;
 
       int columnIdn = -1;
-//      float horizonAngle = thisPoint.horizontal_angle;
-              float horizonAngle = (atan2(thisPoint.x, thisPoint.y) * 180 / M_PI);
+      float horizonAngle = thisPoint.horizontal_angle;
+//              float horizonAngle = (atan2(thisPoint.x, thisPoint.y) * 180 / M_PI);
       static float ang_res_x = 360.0 / float(1800);
-//      columnIdn = round((horizonAngle) / ang_res_x);
-          columnIdn = -round((horizonAngle-90) / ang_res_x) + 1800.0 / 2;
+      columnIdn = round((horizonAngle) / ang_res_x);
+//          columnIdn = -round((horizonAngle-90) / ang_res_x) + 1800.0 / 2;
       if (columnIdn >= 1800) columnIdn -= 1800;
       if (columnIdn < 0 || columnIdn >= 1800) continue;
 
@@ -451,13 +365,8 @@ sensor_msgs::msg::Image LoamMapper::prepareVisImage(Points laserCloudMsg, int co
       if (S.at<float>(rowIdn, columnIdn) != FLT_MAX) continue;
       if (V.at<float>(rowIdn, columnIdn) != FLT_MAX) continue;
 
-      int value = (thisPoint.intensity * 360) / 64;
-      if (value >= 360) {
-        value = (thisPoint.intensity * 360) / 255;
-      }
-
-      mono.at<float>(rowIdn, columnIdn) = (range * 360) / 60;
-      H.at<float>(rowIdn, columnIdn) = (range * 360) / 60;
+//      H.at<float>(rowIdn, columnIdn) = range;
+      H.at<float>(rowIdn, columnIdn) = horizonAngle;
       S.at<float>(rowIdn, columnIdn) = 1.0;
       V.at<float>(rowIdn, columnIdn) = 1.0;
   }
@@ -465,136 +374,26 @@ sensor_msgs::msg::Image LoamMapper::prepareVisImage(Points laserCloudMsg, int co
   std::vector<cv::Mat> hsv_elements{H, S, V};
   merge(hsv_elements, HSV);
 
-    cv::Mat BGRImage(16, 1800, CV_32FC3, cv::Scalar::all(FLT_MAX));
-    cv::Mat RGBImage(16, 1800, CV_32FC3, cv::Scalar::all(FLT_MAX));
+  cv::Mat mono;
+  cv::Mat RGB;
+  cv::cvtColor(HSV, RGB, CV_HSV2RGB);
+  cv::cvtColor(RGB, mono, CV_RGB2GRAY);
 
+  cv::Mat mono_resized;
+  cv::resize(mono, mono_resized, cv::Size(), 1.0, 20.0);
 
+    cv_bridge::CvImage cv_image;
+    cv_image.header.frame_id = "map";
+    cv_image.header.stamp = this->get_clock()->now();
+    cv_image.encoding = "rgba8";
+    cv_image.image = mono_resized;
 
-
-
-
-    cv::cvtColor(mono, RGBImage, CV_GRAY2RGB);
-//    cv::cvtColor(BGRImage, RGBImage, CV_RGB2HSV);
-
-    std::string image_name = "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/images/" + std::to_string(counter) + ".png";
-    imwrite(image_name, HSV);
-
-    std::cout << RGBImage.data << std::endl;
 
     sensor_msgs::msg::Image image;
-    image.header.stamp = this->get_clock()->now();
-    image.header.frame_id = "map";
-    image.height = 480;
-    image.width = 1800;
-    image.step = RGBImage.step;
-    image.encoding = "rgb8";
-    for (int i = 0; i < 16; i++) {
-        for (int a = 0; a < 30; a++) {
-            for (int j = 0; j < 5400; j++) {
-                //          image_ptr->data->push_back(rangeMat.at<char>(i, j));
-                image.data.push_back(RGBImage.at<char>(i, j));
-            }
-        }
-    }
+    cv_image.toImageMsg(image);
 
     return image;
 }
-
-
-
-sensor_msgs::msg::Image LoamMapper::testImageRgb() {
-
-
-
-  // RGB
-  cv::Mat R(256, 256, CV_32FC1);
-  cv::Mat G(256, 256, CV_32FC1);
-  cv::Mat B(256, 256, CV_32FC1);
-  cv::Mat RGB = cv::Mat::zeros(256, 256, CV_32FC3);
-
-  for (int i = 0; i < 256; i++) {
-    for (int j = 0; j < 256; j++) {
-      R.at<float>(i, j) = 0.0;
-      G.at<float>(i, j) = 255.0;
-      B.at<float>(i, j) = 0.0;
-    }
-  }
-
-  std::vector<cv::Mat> matrices = {R, G, B};
-  cv::merge(matrices, RGB);
-
-  cv::Mat gray;
-  cv::cvtColor(RGB, gray, CV_RGB2GRAY);
-
-
-  std::cout << "\ngray.size: " << gray.size << std::endl;
-  std::cout << "gray.step: " << gray.step << std::endl;
-  std::cout << "gray.dims: " << gray.dims << std::endl;
-  std::cout << "gray.cols: " << gray.cols << std::endl;
-  std::cout << "gray.rows: " << gray.rows << std::endl;
-//  std::cout << "gray.u: " << gray.u << std::endl;
-//  std::cout << "gray.dataend: " << gray.dataend << std::endl;
-//  std::cout << "gray.datastart: " << gray.datastart << std::endl;
-//  std::cout << "gray.datalimit: " << gray.datalimit << std::endl;
-//  std::cout << "gray.data: " << gray.data << std::endl;
-
-
-  cv_bridge::CvImage cv_image;
-  cv_image.header.frame_id = "map";
-  cv_image.header.stamp = this->get_clock()->now();
-  cv_image.encoding = "mono8";
-  cv_image.image = gray;
-
-
-  sensor_msgs::msg::Image image;
-  cv_image.toImageMsg(image);
-
-  std::cout << "image.step: " << image.step << std::endl;
-
-  return image;
-}
-
-
-
-sensor_msgs::msg::Image LoamMapper::testImageHsv() {
-
-  // HSV
-
-  //  cv::Mat H(720, 720, CV_32FC1, cv::Scalar::all(FLT_MAX));
-  //  cv::Mat S(720, 720, CV_32FC1, 1.0);
-  //  cv::Mat V(720, 720, CV_32FC1, 1.0);
-  //  cv::Mat HSV(720, 720, CV_32FC3, cv::Scalar(200.0, 1.0, 1.0));
-  //
-  //    for (int i = 0; i < 720; i++) {
-  //      for (int j = 0; j < 720; j++) {
-  //        H.at<float>(i, j) = j/2;
-  //        H.at<float>(i, j) = 1.0;
-  //        H.at<float>(i, j) = 1.0;
-  //      }
-  //    }
-  //  std::vector<cv::Mat> matrices = {H, S, V};
-  //  std::vector<cv::Mat> matrices = {R, G, B};
-
-  //  cv::merge(matrices, HSV);
-
-
-  //  cv::Mat RGB;
-  //  cv::cvtColor(HSV, RGB, CV_HSV2RGB);
-
-
-
-  //  for (int i = 0; i < 720; i++) {
-  //      for (int j = 0; j < 2160; j++) {
-  ////        image_ptr->data->push_back(rangeMat.at<char>(i, j));
-  //        image.data.push_back(RGB.at<char>(i, j));
-  //      }
-  //  }
-
-
-  //  std::cout << "\HSV.data: " << HSV.data << std::endl;
-
-}
-
 
 
 

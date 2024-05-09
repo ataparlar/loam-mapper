@@ -74,12 +74,9 @@ private:
   PointCloud2::SharedPtr points_to_cloud(const Points & points_bad, const std::string & frame_id);
 
   void callback_cloud_surround_out(const Points & points_surround);
-  sensor_msgs::msg::Image createImageFromRangeMat(const cv::Mat & rangeMat, int counter);
   void clear_cloudInfo(utils::Utils::CloudInfo & cloudInfo);
   Points transform_points(Points & cloud);
-  sensor_msgs::msg::Image prepareVisImage(Points laserCloudMsg, int counter);
-  sensor_msgs::msg::Image testImageRgb();
-  sensor_msgs::msg::Image testImageHsv();
+  sensor_msgs::msg::Image prepareVisImage(Points laserCloudMsg);
 
   struct by_ring_and_angle
   {
