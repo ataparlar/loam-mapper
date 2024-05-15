@@ -229,7 +229,12 @@ TransformProvider::Pose TransformProvider::get_pose_at(
 
   size_t index = std::distance(poses_.begin(), iter_result);
   //  std::cout << "ind: " << index << std::endl;
-  return poses_.at(index);
+  if (index <= poses_.size()) {
+    return poses_.at(index);
+  }
+  else {
+    return poses_.at(1);
+  }
 }
 
 }  // loam_mapper::transform_provider

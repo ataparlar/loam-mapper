@@ -76,7 +76,7 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
 
   std::function<void(const Points &)> callback =
     std::bind(&LoamMapper::callback_cloud_surround_out, this, std::placeholders::_1);
-  points_provider->process_pcaps_into_clouds(callback, 0, 2);
+  points_provider->process_pcaps_into_clouds(callback, 0, 1);
   std::cout << "process_pcaps_into_clouds done" << std::endl;
 
   process();
@@ -102,6 +102,9 @@ void LoamMapper::process()
   nav_msgs::msg::Path path_;
   path_.header.frame_id = "map";
   path_.poses.resize(transform_provider->poses_.size());
+  for (int i=0; i<transform_provider->poses_.size(); i++)
+    path_.poses[i].pose = transform_provider->poses_[i].pose_with_covariance.pose;
+  pub_ptr_path_->publish(path_);
 
   points_provider::PointsProvider::Points cloud_all;
   points_provider::PointsProvider::Points cloud_all_corner_;
@@ -194,9 +197,24 @@ void LoamMapper::process()
     cloud_all_surface_.insert(
       cloud_all_surface_.end(), feature_extraction->surfaceCloud.begin(),
       feature_extraction->surfaceCloud.end());
-    std::this_thread::sleep_for(std::chrono::milliseconds(180));
-    auto cloud_ptr_current = thing_to_cloud(cloud_trans, "map");
-    pub_ptr_basic_cloud_current_->publish(*cloud_ptr_current);
+//    std::this_thread::sleep_for(std::chrono::milliseconds(180));
+
+
+
+//    Occtree occ_cloud(voxel_resolution_);
+//    for (const auto & point : cloud_trans) {
+//      occ_cloud.addPointIfVoxelEmpty(pcl::PointXYZI(point.x, point.y, point.z, point.intensity));
+//    }
+////    sensor_msgs::msg::PointCloud2::SharedPtr cloud_ptr = occ_cloud.
+//    pcl::PointCloud<pcl::PointXYZI> pcl_cloud;
+//    for (auto & point : *occ_cloud.cloud) {
+//      pcl_cloud.push_back(point);
+//    }
+//
+//      sensor_msgs::msg::PointCloud2 cloud_ds;
+//      pcl::toROSMsg(pcl_cloud, cloud_ds);
+      auto cloud_ptr_current = thing_to_cloud(cloud_trans, "map");
+      pub_ptr_basic_cloud_current_->publish(*cloud_ptr_current);
     pub_ptr_image_->publish(image);
 
     image_projection->resetParameters();
