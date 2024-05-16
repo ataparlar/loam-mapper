@@ -84,7 +84,7 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
 
   std::function<void(const Points &)> callback =
     std::bind(&LoamMapper::callback_cloud_surround_out, this, std::placeholders::_1);
-  points_provider->process_pcaps_into_clouds(callback, 0, 1);
+  points_provider->process_pcaps_into_clouds(callback, 0, 3);
   std::cout << "process_pcaps_into_clouds done" << std::endl;
 
   process();
@@ -125,21 +125,27 @@ void LoamMapper::process()
   points_provider::PointsProvider::Points cloud_all_corner_;
   points_provider::PointsProvider::Points cloud_all_surface_;
 
-  for (auto & cloud : clouds) {
 
-    std::sort(cloud.begin(), cloud.end(), by_ring_and_angle());
-    std::sort(cloud.begin(), cloud.end(), by_ring_and_angle());
+
+  for (int i=0; i<clouds.size(); i++) {
+
+    auto & cloud = clouds[i+2];
+
+//    std::sort(cloud.begin(), cloud.end(), by_ring_and_angle());
+//    std::sort(cloud.begin(), cloud.end(), by_ring_and_angle());
 
     //    image_projection->setLaserCloudIn(cloud_trans);
+
 
     image_projection->cloudHandler(cloud);
 
     sensor_msgs::msg::Image hsv_image = prepareVisImage(cloud);
 
-    feature_extraction->laserCloudInfoHandler(cloud, image_projection->cloudInfo);
 
-    pub_ptr_cloud_path_->publish(feature_extraction->cloudPath);
-    feature_extraction->cloudPath.poses.clear();
+//    feature_extraction->laserCloudInfoHandler(cloud, image_projection->cloudInfo);
+//
+//    pub_ptr_cloud_path_->publish(feature_extraction->cloudPath);
+//    feature_extraction->cloudPath.poses.clear();
 
 
     image_projection->resetParameters();
@@ -187,7 +193,7 @@ void LoamMapper::process()
       cloud_all_surface_.end(), cloud_surface_trans.begin(),
       cloud_surface_trans.end());
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(800));
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
   }
 
   if (save_pcd_) {
@@ -327,10 +333,7 @@ LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud) {
 
 sensor_msgs::msg::Image LoamMapper::prepareVisImage(Points laserCloudMsg) {
 
-  cv::Mat H(16, 1800, CV_32FC1, cv::Scalar::all(FLT_MAX));
-  cv::Mat S(16, 1800, CV_32FC1, cv::Scalar::all(FLT_MAX));
-  cv::Mat V(16, 1800, CV_32FC1, cv::Scalar::all(FLT_MAX));
-  cv::Mat HSV(16, 1800, CV_32FC3, cv::Scalar::all(FLT_MAX));
+  cv::Mat HSV(16, 1800, CV_8UC3);
 
   int cloudSize = laserCloudMsg.size();
 
@@ -361,32 +364,22 @@ sensor_msgs::msg::Image LoamMapper::prepareVisImage(Points laserCloudMsg) {
       if (columnIdn >= 1800) columnIdn -= 1800;
       if (columnIdn < 0 || columnIdn >= 1800) continue;
 
-      if (H.at<float>(rowIdn, columnIdn) != FLT_MAX) continue;
-      if (S.at<float>(rowIdn, columnIdn) != FLT_MAX) continue;
-      if (V.at<float>(rowIdn, columnIdn) != FLT_MAX) continue;
-
-//      H.at<float>(rowIdn, columnIdn) = range;
-      H.at<float>(rowIdn, columnIdn) = horizonAngle;
-      S.at<float>(rowIdn, columnIdn) = 1.0;
-      V.at<float>(rowIdn, columnIdn) = 1.0;
+      uchar hue = static_cast<uchar>((range * 180.0) / 60);
+//      uchar hue = static_cast<uchar>((horizonAngle * 180.0) / 360);
+      HSV.at<cv::Vec3b>(rowIdn, columnIdn) = cv::Vec3b(hue, 255.0, 255.0);
   }
 
-  std::vector<cv::Mat> hsv_elements{H, S, V};
-  merge(hsv_elements, HSV);
+  cv::Mat BGR;
+  cv::cvtColor(HSV, BGR, cv::COLOR_HSV2BGR);
 
-  cv::Mat mono;
-  cv::Mat RGB;
-  cv::cvtColor(HSV, RGB, CV_HSV2RGB);
-  cv::cvtColor(RGB, mono, CV_RGB2GRAY);
-
-  cv::Mat mono_resized;
-  cv::resize(mono, mono_resized, cv::Size(), 1.0, 20.0);
+  cv::Mat bgr_resized;
+  cv::resize(BGR, bgr_resized, cv::Size(), 1.0, 20.0);
 
     cv_bridge::CvImage cv_image;
     cv_image.header.frame_id = "map";
     cv_image.header.stamp = this->get_clock()->now();
-    cv_image.encoding = "rgba8";
-    cv_image.image = mono_resized;
+    cv_image.encoding = "bgr8";
+    cv_image.image = bgr_resized;
 
 
     sensor_msgs::msg::Image image;
