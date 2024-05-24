@@ -1,4 +1,9 @@
 #include "loam_mapper/feature_extraction.hpp"
+#include "loam_mapper/utils.hpp"
+#include <geometry_msgs/msg/pose_stamped.hpp>
+
+#include <iostream>
+#include <fstream>
 
 namespace loam_mapper::feature_extraction
 {
@@ -11,11 +16,9 @@ void FeatureExtraction::initializationValue()
 {
   cloudSmoothness.resize(28800);  // 16 * 1800
 
-  //  downSizeFilter.setLeafSize(odometrySurfLeafSize, odometrySurfLeafSize, odometrySurfLeafSize);
-
-  //  extractedCloud.reset(new pcl::PointCloud<PointType>());
-  //  cornerCloud.reset(new pcl::PointCloud<PointType>());
-  //  surfaceCloud.reset(new pcl::PointCloud<PointType>());
+  extractedCloud.clear();
+  cornerCloud.clear();
+  surfaceCloud.clear();
 
   cloudCurvature = new float[28800];     // 16 * 1800
   cloudNeighborPicked = new int[28800];  // 16 * 1800
@@ -23,9 +26,9 @@ void FeatureExtraction::initializationValue()
 }
 
 void FeatureExtraction::laserCloudInfoHandler(
-  const Points & deskewed_cloud, utils::Utils::CloudInfo & cloudInfo)
+  const Points & extracted_cloud, utils::Utils::CloudInfo & cloudInfo)
 {
-  extractedCloud = deskewed_cloud;
+  extractedCloud = extracted_cloud;
 
   calculateSmoothness(cloudInfo);
 
@@ -34,22 +37,18 @@ void FeatureExtraction::laserCloudInfoHandler(
   extractFeatures(cloudInfo, 1.0, 0.1);
 
   freeCloudInfoMemory(cloudInfo);
-  //    publishFeatureCloud();
 }
 
 void FeatureExtraction::calculateSmoothness(utils::Utils::CloudInfo & cloudInfo)
 {
   int cloudSize = extractedCloud.size();
+
   for (int i = 5; i < cloudSize - 5; i++) {
     float diffRange =
       cloudInfo.point_range[i - 5] + cloudInfo.point_range[i - 4] + cloudInfo.point_range[i - 3] +
       cloudInfo.point_range[i - 2] + cloudInfo.point_range[i - 1] - cloudInfo.point_range[i] * 10 +
       cloudInfo.point_range[i + 1] + cloudInfo.point_range[i + 2] + cloudInfo.point_range[i + 3] +
       cloudInfo.point_range[i + 4] + cloudInfo.point_range[i + 5];
-
-    //      if (diffRange != 0) {
-    //        std::cout << cloudInfo.point_range[i - 5] << std::endl;
-    //      }
 
     cloudCurvature[i] = diffRange * diffRange;  // diffX * diffX + diffY * diffY + diffZ * diffZ;
 
@@ -70,6 +69,7 @@ void FeatureExtraction::markOccludedPoints(utils::Utils::CloudInfo & cloudInfo)
     float depth1 = cloudInfo.point_range[i];
     float depth2 = cloudInfo.point_range[i + 1];
     int columnDiff = std::abs(int(cloudInfo.point_col_index[i + 1] - cloudInfo.point_col_index[i]));
+
     if (columnDiff < 10) {
       // 10 pixel diff in range image
       if (depth1 - depth2 > 0.3) {
@@ -106,24 +106,17 @@ void FeatureExtraction::extractFeatures(
   Points surfaceCloudScan;
   Points surfaceCloudScanDS;
 
-  for (int i = 1; i < 16; i++) {
+  cloudPath.header.stamp = loam_mapper::utils::Utils::get_time();
+  cloudPath.header.frame_id = "map";
+
+  for (int i = 0; i < 16; i++) {
     surfaceCloudScan.clear();
 
     for (int j = 0; j < 6; j++) {
+
       int sp = (cloudInfo.start_ring_index[i] * (6 - j) + cloudInfo.end_ring_index[i] * j) / 6;
       int ep =
         (cloudInfo.start_ring_index[i] * (5 - j) + cloudInfo.end_ring_index[i] * (j + 1)) / 6 - 1;
-
-      //      std::cout << "i: " << i << std::endl;
-      //      std::cout << "j: " << j << std::endl;
-      //
-      //      std::cout << "sp: " << sp << std::endl;
-      //      std::cout << "ep: " << ep << std::endl;
-      //
-      //
-      //      std::cout << "cloudInfo.start_ring_index[i]: " << cloudInfo.start_ring_index[i] <<
-      //      std::endl; std::cout << "cloudInfo.end_ring_index[i]: " << cloudInfo.end_ring_index[i]
-      //      << std::endl;
 
       if (sp >= ep) continue;
 
@@ -133,7 +126,9 @@ void FeatureExtraction::extractFeatures(
       for (int k = ep; k >= sp; k--) {  // find edge points
 
         int ind = cloudSmoothness[k].ind;
+
         if (cloudNeighborPicked[ind] == 0 && cloudCurvature[ind] > edgeThreshold) {
+
           largestPickedNum++;
           if (largestPickedNum <= 20) {
             cloudLabel[ind] = 1;
@@ -158,10 +153,9 @@ void FeatureExtraction::extractFeatures(
         }
       }
 
-
-
       for (int k = sp; k <= ep; k++) {  // find surface points
         int ind = cloudSmoothness[k].ind;
+
         if (cloudNeighborPicked[ind] == 0 && cloudCurvature[ind] < surfaceThreshold) {
           cloudLabel[ind] = -1;
           cloudNeighborPicked[ind] = 1;
@@ -189,9 +183,6 @@ void FeatureExtraction::extractFeatures(
         }
       }
     }
-
-    //    downSizeFilter.setInputCloud(surfaceCloudScan);
-    //    downSizeFilter.filter(*surfaceCloudScanDS);
 
     surfaceCloud.insert(surfaceCloud.end(), surfaceCloudScan.begin(), surfaceCloudScan.end());
     surfaceCloudScanDS.clear();

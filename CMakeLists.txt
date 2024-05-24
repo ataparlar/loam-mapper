@@ -18,6 +18,7 @@ find_package(tf2 REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(PCL REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(cv_bridge REQUIRED)
 
 include_directories(include
         ${PCL_INCLUDE_DIRS}
@@ -49,7 +50,7 @@ add_executable(${PROJECT_NAME}
         ${LOAM_MAPPER_LIB_SRC}
         ${LOAM_MAPPER_LIB_HEADERS})
 ament_target_dependencies(${PROJECT_NAME} rclcpp PcapPlusPlus PCL pcl_conversions geometry_msgs
-        sensor_msgs nav_msgs visualization_msgs OpenCV)
+        sensor_msgs nav_msgs visualization_msgs OpenCV cv_bridge)
 target_link_libraries(${PROJECT_NAME}
         ${PCL_LIBRARIES}
         ${PcapPlusPlus_LIBRARIES})
@@ -62,13 +63,13 @@ endif ()
 install(TARGETS ${PROJECT_NAME}
         DESTINATION lib/${PROJECT_NAME})
 
-#  install(DIRECTORY
-#          launch
-#          DESTINATION share/${PROJECT_NAME}/
-#  )
-#  install(DIRECTORY
-#          config
-#          DESTINATION share/${PROJECT_NAME}/
-#  )
+  install(DIRECTORY
+          launch
+          DESTINATION share/${PROJECT_NAME}/
+  )
+  install(DIRECTORY
+          config
+          DESTINATION share/${PROJECT_NAME}/
+  )
 
 ament_auto_package()

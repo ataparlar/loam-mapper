@@ -7,12 +7,15 @@
 
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include <visualization_msgs/msg/marker_array.hpp>
+#include <nav_msgs/msg/path.hpp>
 
 #include <boost/filesystem.hpp>
 
 #include <deque>
 #include <memory>
 #include <string>
+#include <iostream>
+#include <fstream>
 
 namespace loam_mapper::feature_extraction
 {
@@ -43,9 +46,12 @@ public:
 
   explicit FeatureExtraction();
 
+  Points cloudOccluded;
+  Points cloudOccludedNot;
   Points extractedCloud;
   Points cornerCloud;
   Points surfaceCloud;
+  nav_msgs::msg::Path cloudPath;
 
   std::vector<smoothness_t> cloudSmoothness;
   float * cloudCurvature;
@@ -53,7 +59,7 @@ public:
   int * cloudLabel;
 
   void initializationValue();
-  void laserCloudInfoHandler(const Points & deskewed_cloud, utils::Utils::CloudInfo & cloudInfo);
+  void laserCloudInfoHandler(const Points & extracted_cloud, utils::Utils::CloudInfo & cloudInfo);
   void calculateSmoothness(utils::Utils::CloudInfo & cloudInfo);
   void markOccludedPoints(utils::Utils::CloudInfo & cloudInfo);
   void extractFeatures(

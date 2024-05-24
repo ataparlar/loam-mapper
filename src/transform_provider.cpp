@@ -1,20 +1,22 @@
 #include "loam_mapper/transform_provider.hpp"
+
 #include "loam_mapper/csv.hpp"
-#include <string>
-#include <array>
-#include <sstream>
-#include <exception>
-#include <algorithm>
-#include <iostream>
-#include <Eigen/Geometry>
-#include <GeographicLib/LocalCartesian.hpp>
 #include "loam_mapper/date.h"
 #include "loam_mapper/utils.hpp"
 
+#include <Eigen/Geometry>
+#include <GeographicLib/LocalCartesian.hpp>
+
+#include <algorithm>
+#include <array>
+#include <exception>
+#include <iostream>
+#include <sstream>
+#include <string>
+
 namespace loam_mapper::transform_provider
 {
-TransformProvider::TransformProvider(
-  const std::string & path_file_ascii_output)
+TransformProvider::TransformProvider(const std::string & path_file_ascii_output)
 : path_file_ascii_output_(path_file_ascii_output)
 {
   if (!fs::exists(path_file_ascii_output_)) {
@@ -49,7 +51,7 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
   std::string temp_pose_file = "temp_pose_file.csv";
   {
     std::ifstream filein(path_file_ascii_output_.string());  // File to read from
-    std::ofstream fileout(temp_pose_file);    // Temporary file
+    std::ofstream fileout(temp_pose_file);                   // Temporary file
     if (!filein || !fileout) {
       // throw exception
       throw(std::runtime_error("Error opening file"));
@@ -131,9 +133,9 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
     double roll;                // in degrees
     double pitch;               // in degrees
     double heading;             // in degrees
-    double east_vel;            // in Meter/Sec
-    double north_vel;           // in Meter/Sec
-    double up_vel;              // in Meter/Sec
+    double x_vel;               // in Meter/Sec
+    double y_vel;               // in Meter/Sec
+    double z_vel;               // in Meter/Sec
     double x_angular_rate;      // in meters
     double y_angular_rate;      // in meters
     double z_angular_rate;      // in meters
@@ -141,23 +143,24 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
     double y_acceleration;      // in meters
     double z_acceleration;      // in meters
 
-    double east_std;     // in meters
-    double north_std;    // in meters
-    double height_std;   // in meters
-    double roll_std;     // in degrees
-    double pitch_std;    // in degrees
-    double heading_std;  // in degrees
+    double x_vel_std;     // in meters
+    double y_vel_std;     // in meters
+    double z_vel_std;     // in meters
+    double roll_std;      // in degrees
+    double pitch_std;     // in degrees
+    double heading_std;   // in degrees
   } in;
 
   try {
     data_line_number = csv_global_pose.get_file_line() + 1;
     while (csv_global_pose.read_row(
       in.utc_time, in.distance, in.easting, in.northing, in.orthometric_height, in.latitude,
-      in.longitude, in.ellipsoid_height, in.roll, in.pitch, in.heading, in.east_vel, in.north_vel,
-      in.up_vel, in.x_angular_rate, in.y_angular_rate, in.z_angular_rate, in.x_acceleration,
-      in.y_acceleration, in.z_acceleration, in.east_std, in.north_std, in.height_std, in.roll_std,
+      in.longitude, in.ellipsoid_height, in.roll, in.pitch, in.heading, in.x_vel, in.y_vel,
+      in.z_vel, in.x_angular_rate, in.y_angular_rate, in.z_angular_rate, in.x_acceleration,
+      in.y_acceleration, in.z_acceleration, in.x_vel_std, in.y_vel_std, in.z_vel_std, in.roll_std,
       in.pitch_std, in.heading_std)) {
       Pose pose;
+      Imu imu;
       pose.pose_with_covariance.pose.position.set__x(in.easting - origin_x);
       pose.pose_with_covariance.pose.position.set__y(in.northing - origin_y);
       pose.pose_with_covariance.pose.position.set__z(in.ellipsoid_height - origin_z);
@@ -165,12 +168,42 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       Eigen::AngleAxisd angle_axis_y(utils::Utils::deg_to_rad(in.pitch), Eigen::Vector3d::UnitX());
       Eigen::AngleAxisd angle_axis_z(
         utils::Utils::deg_to_rad(-in.heading), Eigen::Vector3d::UnitZ());
+      pose.velocity.x = in.x_vel;
+      pose.velocity.y = in.y_vel;
+      pose.velocity.z = in.z_vel;
 
-      Eigen::Quaterniond q = (angle_axis_z * angle_axis_y * angle_axis_x);
+      Eigen::Matrix3d orientation_enu(angle_axis_z * angle_axis_y * angle_axis_x);
+
+      Eigen::Quaterniond q(orientation_enu);
       pose.pose_with_covariance.pose.orientation.set__x(q.x());
       pose.pose_with_covariance.pose.orientation.set__y(q.y());
       pose.pose_with_covariance.pose.orientation.set__z(q.z());
       pose.pose_with_covariance.pose.orientation.set__w(q.w());
+      imu.imu.orientation.set__x(q.x());
+      imu.imu.orientation.set__y(q.y());
+      imu.imu.orientation.set__z(q.z());
+      imu.imu.orientation.set__w(q.w());
+
+      imu.imu.linear_acceleration.set__x(in.y_acceleration);
+      imu.imu.linear_acceleration.set__y(in.x_acceleration);
+      imu.imu.linear_acceleration.set__z(-in.z_acceleration);
+//      imu.imu.linear_acceleration_covariance
+      std::array<double, 3> linear_acc_variances{
+        std::pow(in.x_vel_std, 2),  std::pow(-in.y_vel_std, 2), std::pow(-in.z_vel_std, 2),
+      };
+      for (size_t i = 0; i < 3; ++i) {
+        imu.imu.linear_acceleration_covariance.at(i*4) = linear_acc_variances.at(i);
+      }
+
+      imu.imu.angular_velocity.set__x(in.y_angular_rate);
+      imu.imu.angular_velocity.set__y(-in.x_angular_rate);
+      imu.imu.angular_velocity.set__z(-in.z_angular_rate);
+      std::array<double, 3> angular_rate_variances{
+        std::pow(in.pitch_std, 2),  std::pow(in.roll_std, 2), std::pow(-in.heading_std, 2),
+      };
+      for (size_t i = 0; i < 3; ++i) {
+        imu.imu.linear_acceleration_covariance.at(i*4) = linear_acc_variances.at(i);
+      }
 
       auto segments = utils::Utils::string_to_vec_split_by(mission_date, '/');
 
@@ -189,8 +222,11 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       pose.stamp_unix_seconds = std::chrono::seconds(tp.time_since_epoch()).count();
       pose.stamp_nanoseconds = std::chrono::nanoseconds(time_since_midnight.subseconds()).count();
 
+      imu.stamp_unix_seconds = pose.stamp_unix_seconds;
+      imu.stamp_nanoseconds = pose.stamp_nanoseconds;
+
       std::array<double, 6> variances{
-        std::pow(in.north_std, 2), std::pow(in.east_std, 2),  std::pow(in.height_std, 2),
+        std::pow(in.x_vel_std, 2), std::pow(-in.y_vel_std, 2),  std::pow(-in.z_vel_std, 2),
         std::pow(in.roll_std, 2),  std::pow(in.pitch_std, 2), std::pow(in.heading_std, 2),
       };
 
@@ -205,6 +241,7 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
         pose.pose_with_covariance.covariance.at(i * 7) = variances.at(i);
       }
       poses_.push_back(pose);
+      imu_rotations_.push_back(imu);
     }
   } catch (const std::exception & ex) {
     std::cerr << "Probably empty lines at the end of csv, no problems: " << ex.what() << std::endl;
@@ -212,15 +249,13 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
 }
 
 TransformProvider::Pose TransformProvider::get_pose_at(
-  uint32_t stamp_unix_seconds,
-  uint32_t stamp_nanoseconds)
+  uint32_t stamp_unix_seconds, uint32_t stamp_nanoseconds)
 {
   Pose pose_search;
   pose_search.stamp_unix_seconds = stamp_unix_seconds;
   pose_search.stamp_nanoseconds = stamp_nanoseconds;
   auto iter_result = std::lower_bound(
-    poses_.begin(), poses_.end(), pose_search,
-    [](const Pose & p1, const Pose & p2) {
+    poses_.begin(), poses_.end(), pose_search, [](const Pose & p1, const Pose & p2) {
       if (p1.stamp_unix_seconds == p2.stamp_unix_seconds) {
         return p1.stamp_nanoseconds < p2.stamp_nanoseconds;
       }
@@ -232,4 +267,24 @@ TransformProvider::Pose TransformProvider::get_pose_at(
   return poses_.at(index);
 }
 
-}  // loam_mapper::transform_provider
+TransformProvider::Imu TransformProvider::get_imu_at(
+  uint32_t stamp_unix_seconds, uint32_t stamp_nanoseconds)
+{
+  Imu imu_search;
+
+  imu_search.stamp_unix_seconds = stamp_unix_seconds;
+  imu_search.stamp_nanoseconds = stamp_nanoseconds;
+  auto iter_result = std::lower_bound(
+    imu_rotations_.begin(), imu_rotations_.end(), imu_search, [](const Imu & p1, const Imu & p2) {
+      if (p1.stamp_unix_seconds == p2.stamp_unix_seconds) {
+        return p1.stamp_nanoseconds < p2.stamp_nanoseconds;
+      }
+      return p1.stamp_unix_seconds < p2.stamp_unix_seconds;
+    });
+
+  size_t index = std::distance(imu_rotations_.begin(), iter_result);
+  //  std::cout << "ind: " << index << std::endl;
+  return imu_rotations_.at(index);
+}
+
+}  // namespace loam_mapper::transform_provider

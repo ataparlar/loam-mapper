@@ -2,6 +2,7 @@
 #define BUILD_IMAGE_PROJECTION_HPP
 
 #include "points_provider_base.hpp"
+#include "transform_provider.hpp"
 #include "utils.hpp"
 
 #include <Eigen/Geometry>
@@ -35,12 +36,7 @@ public:
 
   explicit ImageProjection();
 
-
-
   utils::Utils::CloudInfo cloudInfo;
-
-  std::mutex imuLock;
-  std::mutex odoLock;
 
   std::deque<sensor_msgs::msg::Imu> imuQueue;
   std::deque<nav_msgs::msg::Odometry> odomQueue;
@@ -48,50 +44,24 @@ public:
 
   Points currentCloudMsg;
 
-//  double * imuTime = new double[queueLength];
-//  double * imuRotX = new double[queueLength];
-//  double * imuRotY = new double[queueLength];
-//  double * imuRotZ = new double[queueLength];
+    bool firstPointFlag{};
 
-//  int imuPointerCur{};
-//  bool firstPointFlag{};
   Eigen::Affine3f transStartInverse;
 
   Points fullCloud;
   Points extractedCloud;
 
-//  int deskewFlag{};
   cv::Mat rangeMat;
-
-//  bool odomDeskewFlag{};
-//  float odomIncreX{};
-//  float odomIncreY{};
-//  float odomIncreZ{};
-
-  //  lio_sam::msg::CloudInfo cloudInfo;
-//  double timeScanCur{};
-//  double timeScanEnd{};
   std_msgs::msg::Header cloudHeader;
 
   std::vector<int> columnIdnCountVec;
 
-//  void setLaserCloudIn(const Points & cloud);
   void allocateMemory();
 
-  void imuHandler(const sensor_msgs::msg::Imu imuMsg);
-  void odomHandler(const nav_msgs::msg::Odometry odometryMsg);
   void cloudHandler(Points & laserCloudMsg);
-
   void cachePointCloud(Points & laserCloudMsg);
-  //  bool deskewInfo();
-  //  void imuDeskewInfo();
-  //  void odomDeskewInfo();
-  //  void findRotation(double pointTime, float * rotXCur, float * rotYCur, float * rotZCur);
-  //  void findPosition(double relTime, float * posXCur, float * posYCur, float * posZCur);
-  //  PointType deskewPoint(PointType * point, double relTime);
   void projectPointCloud(Points & laserCloudMsg);
-  void cloudExtraction(Points & laserCloudMsg);
-//  void publishClouds();
+  void cloudExtraction();
   void resetParameters();
 };
 
