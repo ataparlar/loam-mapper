@@ -126,7 +126,68 @@ void LoamMapper::process()
 
   for (auto & cloud : clouds) {
 
-    image_projection->cloudHandler(cloud);
+    Points cloud_trans_undistorted;
+    cloud_trans_undistorted.resize(cloud.size());
+    bool first_point_flag = true;
+    std::transform(
+        std::execution::par, cloud.cbegin(), cloud.cend(), cloud_trans_undistorted.begin(),
+        [this, &first_point_flag](const points_provider::PointsProvider::Point & point) {
+
+        auto imu_ =
+          transform_provider->get_imu_at(point.stamp_unix_seconds, point.stamp_nanoseconds);
+        auto pose_ =
+          transform_provider->get_pose_at(point.stamp_unix_seconds, point.stamp_nanoseconds);
+
+        Eigen::Quaternion imu_ori(imu_.imu.orientation.w, imu_.imu.orientation.x,
+                                  imu_.imu.orientation.y, imu_.imu.orientation.z);
+        auto imu_euler = imu_ori.toRotationMatrix().eulerAngles(0, 1, 2);
+
+
+        double first_point_time;
+        float first_point_x_vel, first_point_y_vel, first_point_z_vel;
+
+        if (first_point_flag)
+        {
+          first_point_time =
+            point.stamp_unix_seconds/10e-6 + point.stamp_nanoseconds/10e-9;
+          first_point_x_vel = pose_.velocity.x;
+          first_point_y_vel = pose_.velocity.y;
+          first_point_z_vel = pose_.velocity.z;
+
+//          transStartInverse = (pcl::getTransformation(
+//                                 posXCur, posYCur, posZCur,
+//                                 rotXCur, rotYCur, rotZCur)).inverse();
+          first_point_flag = false;
+
+          return point;
+
+        } else {
+
+          double point_time =
+            point.stamp_unix_seconds/10e-6 + point.stamp_nanoseconds/10e-9;
+
+          double time_dif = point_time - first_point_time;
+          float x_linear_dif = time_dif * (pose_.velocity.x * first_point_x_vel);
+          float y_linear_dif = time_dif * (pose_.velocity.y * first_point_y_vel);
+          float z_linear_dif = time_dif * (pose_.velocity.z * first_point_z_vel);
+
+          Point new_point;
+          new_point.x = x_linear_dif + point.x;
+          new_point.y = y_linear_dif + point.y;
+          new_point.z = z_linear_dif + point.z;
+          new_point.intensity = point.intensity;
+          new_point.stamp_unix_seconds = point.stamp_unix_seconds;
+          new_point.stamp_nanoseconds = point.stamp_nanoseconds;
+          new_point.horizontal_angle = point.horizontal_angle;
+          new_point.ring = point.ring;
+
+          return new_point;
+        }
+    });
+
+
+
+    image_projection->cloudHandler(cloud_trans_undistorted);
     sensor_msgs::msg::Image hsv_image = prepareVisImage(image_projection->rangeMat);
     feature_extraction->laserCloudInfoHandler(image_projection->extractedCloud, image_projection->cloudInfo);
     feature_extraction->cloudPath.poses.clear();
@@ -330,8 +391,6 @@ sensor_msgs::msg::Image LoamMapper::prepareVisImage(cv::Mat & rangeMat) {
 
     return image;
 }
-
-
 
 }  // namespace loam_mapper
 
