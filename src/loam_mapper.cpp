@@ -64,11 +64,7 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   pub_ptr_basic_cloud_current_ = this->create_publisher<PointCloud2>("basic_cloud_current", 10);
   pub_ptr_corner_cloud_current_ = this->create_publisher<PointCloud2>("corner_cloud_current", 10);
   pub_ptr_surface_cloud_current_ = this->create_publisher<PointCloud2>("surface_cloud_current", 10);
-  pub_ptr_ext_cloud_current_ = this->create_publisher<PointCloud2>("ext_cloud_current", 10);
-  pub_ptr_occ_not_cloud_current_ = this->create_publisher<PointCloud2>("occ_not_cloud_current", 10);
-  pub_ptr_occ_cloud_current_ = this->create_publisher<PointCloud2>("occ_cloud_current", 10);
   pub_ptr_path_ = this->create_publisher<nav_msgs::msg::Path>("vehicle_path", 10);
-  pub_ptr_cloud_path_ = this->create_publisher<nav_msgs::msg::Path>("cloud_path", 10);
   pub_ptr_image_ = this->create_publisher<sensor_msgs::msg::Image>("rangeMat", 10);
 
   transform_provider = std::make_shared<transform_provider::TransformProvider>(
@@ -129,26 +125,14 @@ void LoamMapper::process()
 
 
   for (auto & cloud : clouds) {
-//    std::sort(cloud.begin(), cloud.end(), by_ring_and_angle());
-//    std::sort(cloud.begin(), cloud.end(), by_ring_and_angle());
-
-    //    image_projection->setLaserCloudIn(cloud_trans);
 
     image_projection->cloudHandler(cloud);
-
     sensor_msgs::msg::Image hsv_image = prepareVisImage(image_projection->rangeMat);
-
-
-
-
     feature_extraction->laserCloudInfoHandler(image_projection->extractedCloud, image_projection->cloudInfo);
-
-    pub_ptr_cloud_path_->publish(feature_extraction->cloudPath);
     feature_extraction->cloudPath.poses.clear();
 
-
     image_projection->resetParameters();
-
+    clear_cloudInfo(image_projection->cloudInfo);
 
 
     Points cloud_trans = transform_points(cloud);
@@ -156,25 +140,6 @@ void LoamMapper::process()
     pub_ptr_basic_cloud_current_->publish(*cloud_ptr_current);
     pub_ptr_image_->publish(hsv_image);
     cloud_all.insert(cloud_all.end(), cloud_trans.begin(), cloud_trans.end());
-
-
-
-    Points occ_cloud_not = transform_points(feature_extraction->cloudOccludedNot);
-    auto occ_not_cloud_ptr_current = thing_to_cloud(occ_cloud_not, "map");
-    pub_ptr_occ_not_cloud_current_->publish(*occ_not_cloud_ptr_current);
-    feature_extraction->cloudOccludedNot.clear();
-
-    Points occ_cloud_trans = transform_points(feature_extraction->cloudOccluded);
-    auto occ_cloud_ptr_current = thing_to_cloud(occ_cloud_trans, "map");
-    pub_ptr_occ_cloud_current_->publish(*occ_cloud_ptr_current);
-    feature_extraction->cloudOccluded.clear();
-
-    Points ext_trans = transform_points(feature_extraction->extractedCloud);
-    auto ext_cloud_ptr_current = thing_to_cloud(ext_trans, "map");
-    pub_ptr_ext_cloud_current_->publish(*ext_cloud_ptr_current);
-
-
-
 
 
     Points cloud_corner_trans = transform_points(feature_extraction->cornerCloud);
@@ -192,7 +157,7 @@ void LoamMapper::process()
       cloud_all_surface_.end(), cloud_surface_trans.begin(),
       cloud_surface_trans.end());
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
 
   if (save_pcd_) {
@@ -236,10 +201,7 @@ void LoamMapper::process()
 
 void LoamMapper::callback_cloud_surround_out(const LoamMapper::Points & points_surround)
 {
-//  sensor_msgs::msg::PointCloud2::SharedPtr cloud_surround = points_to_cloud(points_surround, "map");
-//  pub_ptr_basic_cloud_current_->publish(*cloud_surround);
   clouds.push_back(points_surround);
-//  std::this_thread::sleep_for(std::chrono::milliseconds(500));
 }
 
 sensor_msgs::msg::PointCloud2::SharedPtr LoamMapper::points_to_cloud(
@@ -272,8 +234,6 @@ LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud) {
 
   std::transform(
     std::execution::par, cloud.cbegin(), cloud.cend(), cloud_trans.begin(),
-    //      std::execution::par, feature_extraction->cornerCloud.cbegin(),
-    //      feature_extraction->cornerCloud.cend(), cloud_trans.begin(),
     [this](const points_provider::PointsProvider::Point & point) {
       points_provider::PointsProvider::Point point_trans;
       loam_mapper::transform_provider::TransformProvider::Pose pose =
