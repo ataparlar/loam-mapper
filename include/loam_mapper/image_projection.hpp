@@ -60,6 +60,12 @@ public:
   Points fullCloud;
   Points extractedCloud;
 
+  std::ofstream file_point_range;
+  std::ofstream file_start_ring_ind;
+  std::ofstream file_end_ring_ind;
+  std::ofstream file_point_col_ind;
+
+
   //  int deskewFlag{};
   cv::Mat rangeMat;
 //  cv::Mat image_vis;

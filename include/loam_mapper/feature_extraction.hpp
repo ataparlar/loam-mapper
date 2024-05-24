@@ -14,6 +14,8 @@
 #include <deque>
 #include <memory>
 #include <string>
+#include <iostream>
+#include <fstream>
 
 namespace loam_mapper::feature_extraction
 {
@@ -50,6 +52,14 @@ public:
   Points cornerCloud;
   Points surfaceCloud;
   nav_msgs::msg::Path cloudPath;
+
+  int counter = 0;
+  std::ofstream file_point_range;
+  std::ofstream file_start_ring_ind;
+  std::ofstream file_end_ring_ind;
+  std::ofstream file_point_col_ind;
+  std::ofstream file_cloud_smoothness;
+  std::ofstream file_cloud_neighbor;
 
   std::vector<smoothness_t> cloudSmoothness;
   float * cloudCurvature;

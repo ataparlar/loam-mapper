@@ -25,8 +25,6 @@ public:
   using Points = points_provider::PointsProviderBase::Points;
   using Point = points_provider::PointsProviderBase::Point;
 
-
-
   explicit LoamMapper();
 
   // Params
@@ -76,7 +74,7 @@ private:
   void callback_cloud_surround_out(const Points & points_surround);
   void clear_cloudInfo(utils::Utils::CloudInfo & cloudInfo);
   Points transform_points(Points & cloud);
-  sensor_msgs::msg::Image prepareVisImage(Points laserCloudMsg);
+  sensor_msgs::msg::Image prepareVisImage(cv::Mat & rangeMat);
 
   struct by_ring_and_angle
   {

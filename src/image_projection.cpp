@@ -10,7 +10,16 @@ ImageProjection::ImageProjection()
 {
   allocateMemory();
   resetParameters();
+
+
+  file_point_range.open("/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/txt/file_point_range.txt");
+  file_start_ring_ind.open("/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/txt/file_start_ring_ind.txt");
+  file_end_ring_ind.open("/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/txt/file_end_ring_ind.txt");
+  file_point_col_ind.open("/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/txt/file_point_col_ind.txt");
+
 }
+
+
 
 // void ImageProjection::setLaserCloudIn(const Points & cloud) {
 //   laserCloudIn.resize(cloud.size());
@@ -45,8 +54,11 @@ void ImageProjection::odomHandler(const nav_msgs::msg::Odometry odometryMsg)
   odomQueue.push_back(odometryMsg);
 }
 
-void ImageProjection::cloudHandler(Points & laserCloudMsg)
-{
+void ImageProjection::cloudHandler(Points & laserCloudMsg) {
+
+    std::cout << "\nimage_projection - laserCloudMsg.size(): " << laserCloudMsg.size() << std::endl;
+
+
   cachePointCloud(laserCloudMsg);
 //  std::cout << "image_projection->cloudInfo.start_ring_index: " << cloudInfo.start_ring_index.size() << std::endl;
 
@@ -94,7 +106,7 @@ void ImageProjection::projectPointCloud(Points & laserCloudMsg)
     float horizonAngle = thisPoint.horizontal_angle;
 //        float horizonAngle = atan2(thisPoint.x, thisPoint.y) * 180 / M_PI;
     static float ang_res_x = 360.0 / float(1800);
-    columnIdn = round((horizonAngle) / ang_res_x);
+    columnIdn = 1800 - round((horizonAngle) / ang_res_x);
 //    columnIdn = -round((horizonAngle) / ang_res_x) + 1800.0 / 2;
     if (columnIdn >= 1800) columnIdn -= 1800;
     if (columnIdn < 0 || columnIdn >= 1800) continue;
@@ -106,7 +118,8 @@ void ImageProjection::projectPointCloud(Points & laserCloudMsg)
 
     rangeMat.at<float>(rowIdn, columnIdn) = range;
 
-    fullCloud.push_back(thisPoint);
+    int index = columnIdn + rowIdn * 1800;
+    fullCloud[index] = thisPoint;
   }
 }
 
@@ -116,19 +129,12 @@ void ImageProjection::projectPointCloud(Points & laserCloudMsg)
 
 void ImageProjection::cloudExtraction(Points & laserCloudMsg)
 {
-  fullCloud.resize(16 * 1800);
-
-  cloudInfo.start_ring_index.assign(16, 0);
-  cloudInfo.end_ring_index.assign(16, 0);
-
-  cloudInfo.point_col_index.assign(16 * 1800, 0);
-  cloudInfo.point_range.assign(16 * 1800, 0);
-
   int count = 0;
   // extract segmented cloud for lidar odometry
 
   for (int i = 0; i < 16; ++i) {
     cloudInfo.start_ring_index[i] = count - 1 + 5;
+    file_start_ring_ind << cloudInfo.start_ring_index[i] << "\t";
     for (int j = 0; j < 1800; ++j) {
       if (rangeMat.at<float>(i, j) != FLT_MAX) {
         // mark the points' column index for marking occlusion later
@@ -136,14 +142,23 @@ void ImageProjection::cloudExtraction(Points & laserCloudMsg)
         // save range info
         cloudInfo.point_range[count] = rangeMat.at<float>(i, j);
         // save extracted cloud
-        extractedCloud.push_back(laserCloudMsg[j + i * 1800]);
+        extractedCloud.push_back(fullCloud[j + i * 1800]);
         // size of extracted cloud
         ++count;
+
+        file_point_col_ind << cloudInfo.point_col_index[j] << "\t";
+        file_point_range << cloudInfo.point_range[count] << "\t";
       }
     }
     cloudInfo.end_ring_index[i] = count - 1 - 5;
+
+    file_end_ring_ind << cloudInfo.end_ring_index[i] << "\t";
+
+    file_point_col_ind << std::endl;
+    file_point_range << std::endl;
   }
-//  std::cout << "image_projection->cloudInfo.start_ring_index.size(): " << cloudInfo.start_ring_index.size() << "\n" << std::endl;
+
+  std::cout << "image_projection - extractedCloud.size(): " << extractedCloud.size() << std::endl;
 }
 
 void ImageProjection::resetParameters()
@@ -151,7 +166,8 @@ void ImageProjection::resetParameters()
   //  laserCloudIn.clear();
   extractedCloud.clear();
   // reset range matrix for range image projection
-  rangeMat = cv::Mat(16, 1800, CV_32F, cv::Scalar::all(FLT_MAX));
+  rangeMat = cv::Mat(16, 1800, CV_32F, FLT_MAX);
+//  rangeMat = cv::Mat(16, 1800, CV_8UC1, 0.0);
 
   //  imuPointerCur = 0;
   firstPointFlag = true;

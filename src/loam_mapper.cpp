@@ -18,6 +18,8 @@
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/Image.h>
 
+#include <sensor_msgs/point_cloud2_iterator.hpp>
+
 #include <cstdint>
 #include <execution>
 #include <memory>
@@ -126,7 +128,6 @@ void LoamMapper::process()
   points_provider::PointsProvider::Points cloud_all_surface_;
 
 
-
   for (auto & cloud : clouds) {
 //    std::sort(cloud.begin(), cloud.end(), by_ring_and_angle());
 //    std::sort(cloud.begin(), cloud.end(), by_ring_and_angle());
@@ -135,10 +136,12 @@ void LoamMapper::process()
 
     image_projection->cloudHandler(cloud);
 
-    sensor_msgs::msg::Image hsv_image = prepareVisImage(cloud);
+    sensor_msgs::msg::Image hsv_image = prepareVisImage(image_projection->rangeMat);
 
 
-    feature_extraction->laserCloudInfoHandler(cloud, image_projection->cloudInfo);
+
+
+    feature_extraction->laserCloudInfoHandler(image_projection->extractedCloud, image_projection->cloudInfo);
 
     pub_ptr_cloud_path_->publish(feature_extraction->cloudPath);
     feature_extraction->cloudPath.poses.clear();
@@ -189,7 +192,7 @@ void LoamMapper::process()
       cloud_all_surface_.end(), cloud_surface_trans.begin(),
       cloud_surface_trans.end());
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
   }
 
   if (save_pcd_) {
@@ -229,6 +232,7 @@ void LoamMapper::process()
 
   std::cout << "LoamMapper is done." << std::endl;
 }
+
 
 void LoamMapper::callback_cloud_surround_out(const LoamMapper::Points & points_surround)
 {
@@ -327,65 +331,24 @@ LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud) {
   return cloud_trans;
 }
 
-sensor_msgs::msg::Image LoamMapper::prepareVisImage(Points laserCloudMsg) {
+sensor_msgs::msg::Image LoamMapper::prepareVisImage(cv::Mat & rangeMat) {
 
-  cv::Mat HSV(16, 1800, CV_32FC1, 0.0);
-
-  int cloudSize = laserCloudMsg.size();
-
-  for (int i = 0; i < cloudSize; ++i) {
-      Point thisPoint;
-      thisPoint.x = laserCloudMsg[i].x;
-      thisPoint.y = laserCloudMsg[i].y;
-      thisPoint.z = laserCloudMsg[i].z;
-      thisPoint.intensity = laserCloudMsg[i].intensity;
-      thisPoint.horizontal_angle = laserCloudMsg[i].horizontal_angle;
-      thisPoint.ring = laserCloudMsg[i].ring;
-      thisPoint.stamp_unix_seconds = laserCloudMsg[i].stamp_unix_seconds;
-      thisPoint.stamp_nanoseconds = laserCloudMsg[i].stamp_nanoseconds;
-
-      float range =
-        sqrt(thisPoint.x * thisPoint.x + thisPoint.y * thisPoint.y + thisPoint.z * thisPoint.z);
-
-      int rowIdn = thisPoint.ring;
-
-      if (rowIdn < 0 || rowIdn >= 16) continue;
-
-      int columnIdn = -1;
-      float horizonAngle = thisPoint.horizontal_angle;
-//              float horizonAngle = (atan2(thisPoint.x, thisPoint.y) * 180 / M_PI);
-      static float ang_res_x = 360.0 / float(1800);
-      columnIdn = round((horizonAngle) / ang_res_x);
-//          columnIdn = -round((horizonAngle-90) / ang_res_x) + 1800.0 / 2;
-      if (columnIdn >= 1800) columnIdn -= 1800;
-      if (columnIdn < 0 || columnIdn >= 1800) continue;
-
-//      uchar hue = static_cast<uchar>((range * 180.0) / 60);
-//      uchar hue = static_cast<uchar>((horizonAngle * 180.0) / 360);
-//      HSV.at<cv::Vec3b>(rowIdn, columnIdn) = cv::Vec3b(hue, 255.0, 255.0);
-      HSV.at<float>(rowIdn, columnIdn) = range;
-  }
-
-//  cv::Mat normalized_image(HSV.rows, HSV.cols, CV_8UC1, 0.0);
-////  HSV.convertTo(normalized_image, CV_8UC1, 180.0);
-//  for (int col = 0; col < HSV.cols; ++col) {
-//    for (int row = 0; row < HSV.rows; ++row) {
-//      normalized_image.at<uchar>(row, col) = static_cast<uchar>((HSV.at<float>(row, col) * 180.0) / 60);
-//    }
-//  }
-
-  cv::Mat normalized_image(image_projection->rangeMat.rows, image_projection->rangeMat.cols, CV_8UC1, 0.0);
-  for (int col = 0; col < image_projection->rangeMat.cols; ++col) {
-    for (int row = 0; row < image_projection->rangeMat.rows; ++row) {
-      normalized_image.at<uchar>(row, col) = static_cast<uchar>((image_projection->rangeMat.at<float>(row, col) * 180.0) / 60);
+  cv::Mat normalized_image(rangeMat.rows, rangeMat.cols, CV_8UC1, 0.0);
+  for (int col = 0; col < rangeMat.cols; ++col) {
+    for (int row = 0; row < rangeMat.rows; ++row) {
+      normalized_image.at<uchar>(row, col) = static_cast<uchar>((rangeMat.at<float>(row, col) * 180.0) / 60);
     }
   }
 
-  cv::Mat hsv_image(normalized_image.size(), CV_8UC3, cv::Vec3b(0.0, 0.0, 0.0));
+  cv::Mat hsv_image(normalized_image.size(), CV_8UC3, cv::Vec3b(0.0, 255.0, 255.0));
   for (int col = 0; col < normalized_image.cols; ++col) {
     for (int row = 0; row < normalized_image.rows; ++row) {
       uchar hue = normalized_image.at<uchar>(row, col);
-      hsv_image.at<cv::Vec3b>(row, col) = cv::Vec3b(hue, 255, 255); // Full saturation and value
+      if (hue == 0) {
+        hsv_image.at<cv::Vec3b>(row, col) = cv::Vec3b(hue, 0, 0); // Full saturation and value
+      } else {
+        hsv_image.at<cv::Vec3b>(row, col) = cv::Vec3b(hue, 255, 255); // Full saturation and value
+      }
     }
   }
 

@@ -2,11 +2,22 @@
 #include "loam_mapper/utils.hpp"
 #include <geometry_msgs/msg/pose_stamped.hpp>
 
+#include <iostream>
+#include <fstream>
+
 namespace loam_mapper::feature_extraction
 {
 FeatureExtraction::FeatureExtraction()
 {
   initializationValue();
+
+//  file_point_range.open("/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/txt/file_point_range.txt");
+//  file_start_ring_ind.open("/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/txt/file_start_ring_ind.txt");
+//  file_end_ring_ind.open("/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/txt/file_end_ring_ind.txt");
+//  file_point_col_ind.open("/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/txt/file_point_col_ind.txt");
+  file_cloud_smoothness.open("/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/txt/file_cloud_smoothness.txt");
+  file_cloud_neighbor.open("/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/txt/file_cloud_file_cloud_neighbor.txt");
+
 }
 
 void FeatureExtraction::initializationValue()
@@ -37,6 +48,9 @@ void FeatureExtraction::laserCloudInfoHandler(
 //  }
   extractedCloud = deskewed_cloud;
 
+  std::cout << "feature_extraction - deskewed_cloud.size(): " << deskewed_cloud.size() << std::endl;
+
+
   calculateSmoothness(cloudInfo);
 
   markOccludedPoints(cloudInfo);
@@ -49,6 +63,20 @@ void FeatureExtraction::laserCloudInfoHandler(
 
 void FeatureExtraction::calculateSmoothness(utils::Utils::CloudInfo & cloudInfo)
 {
+
+//for (int i = 0; i < 16; ++i) {
+//  file_start_ring_ind << cloudInfo.start_ring_index[i] << "\t";
+//  for (int j = 0; j < 1800; ++j) {
+//    file_point_col_ind << cloudInfo.point_col_index[i] << "\t";
+//    file_point_range << cloudInfo.point_range[i] << "\t";
+//
+//  }
+//  file_end_ring_ind << cloudInfo.end_ring_index[i] << "\t";
+//
+//  file_point_col_ind << std::endl;
+//  file_point_range << std::endl;
+//}
+
   int cloudSize = extractedCloud.size();
 //  std::cout << "cloudSize: " << cloudSize << std::endl;
 //  int a_counter = 0;
@@ -94,15 +122,20 @@ void FeatureExtraction::calculateSmoothness(utils::Utils::CloudInfo & cloudInfo)
     cloudSmoothness[i].value = cloudCurvature[i];
     cloudSmoothness[i].ind = i;
 
+    file_cloud_smoothness << "(" << cloudSmoothness[i].value << ", " << cloudSmoothness[i].ind << ")\t";
+
 //    std::cout << "cloudSmoothness[i].value:  " << cloudSmoothness[i].value << std::endl;
 
 
   }
   //  std::cout << "a_counter: " << a_counter << std::endl;
+  file_cloud_smoothness << std::endl;
 }
 
 void FeatureExtraction::markOccludedPoints(utils::Utils::CloudInfo & cloudInfo)
 {
+
+//  std::cout << "feature_extraction - extractedCloud.size(): " << extractedCloud.size() << std::endl;
 
   int cloudSize = extractedCloud.size();
   // mark occluded points and parallel beam points
@@ -111,26 +144,12 @@ void FeatureExtraction::markOccludedPoints(utils::Utils::CloudInfo & cloudInfo)
     float depth1 = cloudInfo.point_range[i];
     float depth2 = cloudInfo.point_range[i + 1];
     int columnDiff = std::abs(int(cloudInfo.point_col_index[i + 1] - cloudInfo.point_col_index[i]));
-//    std::cout << "cloudInfo.start_ring_index[i]: " << cloudInfo.start_ring_index[i] << std::endl;
-//    std::cout << "cloudInfo.point_col_index[i+1]: " << cloudInfo.point_col_index[i+1] << std::endl;
-//    std::cout << "cloudInfo.point_col_index[i]: " << cloudInfo.point_col_index[i] << std::endl;
-//    if (columnDiff > 1) {
-//      std::cout << "columnDiff: " << columnDiff << std::endl;
-//    }
-//    std::cout << "\n\n" << std::endl;
 
+//    std::cout << "depth1 - depth2: " << depth1 - depth2 << std::endl;
 
     if (columnDiff < 10) {
       // 10 pixel diff in range image
       if (depth1 - depth2 > 0.3) {
-//        std::cout << "cloudOccludedNot Left: " << depth1 << " - " << depth2 << " = " << depth1 - depth2 << std::endl;
-//        std::cout << "\ncloudInfo.point_col_index[i]: " << cloudInfo.point_col_index[i] << std::endl;
-//        std::cout << "cloudInfo.start_ring_index[i]: " << cloudInfo.start_ring_index[i] << std::endl;
-//        std::cout << "\ncloudInfo.point_col_index[i+1]: " << cloudInfo.point_col_index[i+1] << std::endl;
-//        std::cout << "cloudInfo.start_ring_index[i+1]: " << cloudInfo.start_ring_index[i+1] << std::endl;
-//        std::cout << "\ncolumnDiff: " << columnDiff << std::endl;
-//        std::cout << "\n\n" << std::endl;
-
         cloudNeighborPicked[i - 5] = 1;
         cloudNeighborPicked[i - 4] = 1;
         cloudNeighborPicked[i - 3] = 1;
@@ -138,7 +157,6 @@ void FeatureExtraction::markOccludedPoints(utils::Utils::CloudInfo & cloudInfo)
         cloudNeighborPicked[i - 1] = 1;
         cloudNeighborPicked[i] = 1;
       } else if (depth2 - depth1 > 0.3) {
-//        std::cout << "cloudOccludedNot Right: " << depth2 << " - " << depth1 << " = " << depth2 - depth1 << std::endl;
         cloudNeighborPicked[i + 1] = 1;
         cloudNeighborPicked[i + 2] = 1;
         cloudNeighborPicked[i + 3] = 1;
@@ -170,6 +188,11 @@ void FeatureExtraction::extractFeatures(
   cloudPath.header.frame_id = "map";
 
 
+//  std::cout << "cloudSmoothness.size(): " << cloudSmoothness.size() << std::endl;
+
+
+
+
 
   for (int i = 0; i < 16; i++) {
     surfaceCloudScan.clear();
@@ -192,6 +215,7 @@ void FeatureExtraction::extractFeatures(
       if (sp >= ep) continue;
 
       std::sort(cloudSmoothness.begin() + sp, cloudSmoothness.begin() + ep, by_value());
+
 
       int largestPickedNum = 0;
       for (int k = ep; k >= sp; k--) {  // find edge points
@@ -218,6 +242,8 @@ void FeatureExtraction::extractFeatures(
         }
 
 
+//        std::cout << "cloudNeighborPicked[ind]: " <<  cloudNeighborPicked[ind] << std::endl;
+//        std::cout << "cloudCurvature[ind]: " <<  cloudCurvature[ind] << "\n" << std::endl;
 
 
         if (cloudNeighborPicked[ind] == 0 && cloudCurvature[ind] > edgeThreshold) {
@@ -291,10 +317,30 @@ void FeatureExtraction::extractFeatures(
     //    downSizeFilter.setInputCloud(surfaceCloudScan);
     //    downSizeFilter.filter(*surfaceCloudScanDS);
 
+
+
+
+
     surfaceCloud.insert(surfaceCloud.end(), surfaceCloudScan.begin(), surfaceCloudScan.end());
     surfaceCloudScanDS.clear();
 
   }
+
+  int one_counter = 0;
+  int zero_counter = 0;
+  for (int i=0; i<28800; i++) {
+    file_cloud_neighbor << cloudNeighborPicked[i] << "\t";
+    if (cloudNeighborPicked[i] == 0) {
+      zero_counter++;
+    } else if (cloudNeighborPicked[i] == 1) {
+      one_counter++;
+    }
+  }
+  file_cloud_neighbor << std::endl;
+
+  std::cout << "\n\none_counter: " << one_counter << std::endl;
+  std::cout << "zero_counter: " << zero_counter << std::endl;
+
 }
 
 void FeatureExtraction::freeCloudInfoMemory(utils::Utils::CloudInfo & cloudInfo)
