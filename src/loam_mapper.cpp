@@ -2,7 +2,6 @@
 #include "loam_mapper/loam_mapper.hpp"
 
 #include "loam_mapper/Occtree.h"
-#include "pcl/common/transforms.h"
 
 #include <Eigen/Geometry>
 #include <loam_mapper/point_types.hpp>
@@ -11,14 +10,10 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <nav_msgs/msg/path.hpp>
-
-#include <pcl/io/pcd_io.h>
-#include <pcl_conversions/pcl_conversions.h>
+#include <sensor_msgs/point_cloud2_iterator.hpp>
 
 #include <cv_bridge/cv_bridge.h>
-#include <sensor_msgs/Image.h>
-
-#include <sensor_msgs/point_cloud2_iterator.hpp>
+#include <pcl/io/pcd_io.h>
 
 #include <cstdint>
 #include <execution>
@@ -123,55 +118,74 @@ void LoamMapper::process()
   points_provider::PointsProvider::Points cloud_all_corner_;
   points_provider::PointsProvider::Points cloud_all_surface_;
 
-
   for (auto & cloud : clouds) {
-
     Points cloud_trans_undistorted;
     cloud_trans_undistorted.resize(cloud.size());
     bool first_point_flag = true;
     std::transform(
-        std::execution::par, cloud.cbegin(), cloud.cend(), cloud_trans_undistorted.begin(),
-        [this, &first_point_flag](const points_provider::PointsProvider::Point & point) {
-
+      std::execution::par, cloud.cbegin(), cloud.cend(), cloud_trans_undistorted.begin(),
+      [this, &first_point_flag](const points_provider::PointsProvider::Point & point) {
         auto imu_ =
           transform_provider->get_imu_at(point.stamp_unix_seconds, point.stamp_nanoseconds);
         auto pose_ =
           transform_provider->get_pose_at(point.stamp_unix_seconds, point.stamp_nanoseconds);
 
-        Eigen::Quaternion imu_ori(imu_.imu.orientation.w, imu_.imu.orientation.x,
-                                  imu_.imu.orientation.y, imu_.imu.orientation.z);
+        Eigen::Quaternion imu_ori(
+          imu_.imu.orientation.w, imu_.imu.orientation.x, imu_.imu.orientation.y,
+          imu_.imu.orientation.z);
         auto imu_euler = imu_ori.toRotationMatrix().eulerAngles(0, 1, 2);
-
 
         double first_point_time;
         float first_point_x_vel, first_point_y_vel, first_point_z_vel;
 
-        if (first_point_flag)
-        {
-          first_point_time =
-            point.stamp_unix_seconds/10e-6 + point.stamp_nanoseconds/10e-9;
+        if (first_point_flag) {
+          first_point_time = point.stamp_unix_seconds / 10e-6 + point.stamp_nanoseconds / 10e-9;
           first_point_x_vel = pose_.velocity.x;
           first_point_y_vel = pose_.velocity.y;
           first_point_z_vel = pose_.velocity.z;
-
-//          transStartInverse = (pcl::getTransformation(
-//                                 posXCur, posYCur, posZCur,
-//                                 rotXCur, rotYCur, rotZCur)).inverse();
           first_point_flag = false;
-
           return point;
-
         } else {
-
-          double point_time =
-            point.stamp_unix_seconds/10e-6 + point.stamp_nanoseconds/10e-9;
+          double point_time = point.stamp_unix_seconds / 10e-6 + point.stamp_nanoseconds / 10e-9;
 
           double time_dif = point_time - first_point_time;
+
+          double omega_x = imu_.imu.angular_velocity.x;
+          double omega_y = imu_.imu.angular_velocity.y;
+          double omega_z = imu_.imu.angular_velocity.z;
+
+          double omega_magnitude = sqrt(omega_x * omega_x + omega_y * omega_y + omega_z * omega_z);
+
+          double theta = omega_magnitude * time_dif;
+          double cosTheta = cos(theta);
+          double sinTheta = sin(theta);
+
+          double magnitude = sqrt(omega_x * omega_x + omega_y * omega_y + omega_z * omega_z);
+          if (magnitude != 0) {
+            omega_x /= magnitude;
+            omega_y /= magnitude;
+            omega_z /= magnitude;
+          }
+
+          double new_x = (cosTheta + (1 - cosTheta) * omega_x * omega_x) * point.x +
+                        ((1 - cosTheta) * omega_x * omega_y - omega_z * sinTheta) * point.y +
+                        ((1 - cosTheta) * omega_x * omega_z + omega_y * sinTheta) * point.z;
+          double new_y = ((1 - cosTheta) * omega_y * omega_x + omega_z * sinTheta) * point.x +
+                        (cosTheta + (1 - cosTheta) * omega_y * omega_y) * point.y +
+                        ((1 - cosTheta) * omega_y * omega_z - omega_x * sinTheta) * point.z;
+          double new_z = ((1 - cosTheta) * omega_z * omega_x - omega_y * sinTheta) * point.x +
+                        ((1 - cosTheta) * omega_z * omega_y + omega_x * sinTheta) * point.y +
+                        (cosTheta + (1 - cosTheta) * omega_z * omega_z) * point.z;
+
+          Point new_point;
+          new_point.x = new_x;
+          new_point.y = new_y;
+          new_point.z = new_z;
+
           float x_linear_dif = time_dif * (pose_.velocity.x * first_point_x_vel);
           float y_linear_dif = time_dif * (pose_.velocity.y * first_point_y_vel);
           float z_linear_dif = time_dif * (pose_.velocity.z * first_point_z_vel);
 
-          Point new_point;
           new_point.x = x_linear_dif + point.x;
           new_point.y = y_linear_dif + point.y;
           new_point.z = z_linear_dif + point.z;
@@ -183,18 +197,16 @@ void LoamMapper::process()
 
           return new_point;
         }
-    });
-
-
+      });
 
     image_projection->cloudHandler(cloud_trans_undistorted);
     sensor_msgs::msg::Image hsv_image = prepareVisImage(image_projection->rangeMat);
-    feature_extraction->laserCloudInfoHandler(image_projection->extractedCloud, image_projection->cloudInfo);
+    feature_extraction->laserCloudInfoHandler(
+      image_projection->extractedCloud, image_projection->cloudInfo);
     feature_extraction->cloudPath.poses.clear();
 
     image_projection->resetParameters();
     clear_cloudInfo(image_projection->cloudInfo);
-
 
     Points cloud_trans = transform_points(cloud);
     auto cloud_ptr_current = thing_to_cloud(cloud_trans, "map");
@@ -202,21 +214,17 @@ void LoamMapper::process()
     pub_ptr_image_->publish(hsv_image);
     cloud_all.insert(cloud_all.end(), cloud_trans.begin(), cloud_trans.end());
 
-
     Points cloud_corner_trans = transform_points(feature_extraction->cornerCloud);
     auto corner_cloud_ptr_current = thing_to_cloud(cloud_corner_trans, "map");
     pub_ptr_corner_cloud_current_->publish(*corner_cloud_ptr_current);
     cloud_all_corner_.insert(
-      cloud_all_corner_.end(), cloud_corner_trans.begin(),
-      cloud_corner_trans.end());
-
+      cloud_all_corner_.end(), cloud_corner_trans.begin(), cloud_corner_trans.end());
 
     Points cloud_surface_trans = transform_points(feature_extraction->surfaceCloud);
     auto surface_cloud_ptr_current = thing_to_cloud(cloud_surface_trans, "map");
     pub_ptr_surface_cloud_current_->publish(*surface_cloud_ptr_current);
     cloud_all_surface_.insert(
-      cloud_all_surface_.end(), cloud_surface_trans.begin(),
-      cloud_surface_trans.end());
+      cloud_all_surface_.end(), cloud_surface_trans.begin(), cloud_surface_trans.end());
 
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
@@ -259,7 +267,6 @@ void LoamMapper::process()
   std::cout << "LoamMapper is done." << std::endl;
 }
 
-
 void LoamMapper::callback_cloud_surround_out(const LoamMapper::Points & points_surround)
 {
   clouds.push_back(points_surround);
@@ -289,7 +296,8 @@ void LoamMapper::clear_cloudInfo(utils::Utils::CloudInfo & cloudInfo)
   cloudInfo.point_col_index.clear();
 }
 
-LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud) {
+LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud)
+{
   Points cloud_trans;
   cloud_trans.resize(cloud.size());
 
@@ -352,12 +360,13 @@ LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud) {
   return cloud_trans;
 }
 
-sensor_msgs::msg::Image LoamMapper::prepareVisImage(cv::Mat & rangeMat) {
-
+sensor_msgs::msg::Image LoamMapper::prepareVisImage(cv::Mat & rangeMat)
+{
   cv::Mat normalized_image(rangeMat.rows, rangeMat.cols, CV_8UC1, 0.0);
   for (int col = 0; col < rangeMat.cols; ++col) {
     for (int row = 0; row < rangeMat.rows; ++row) {
-      normalized_image.at<uchar>(row, col) = static_cast<uchar>((rangeMat.at<float>(row, col) * 180.0) / 60);
+      normalized_image.at<uchar>(row, col) =
+        static_cast<uchar>((rangeMat.at<float>(row, col) * 180.0) / 60);
     }
   }
 
@@ -366,9 +375,9 @@ sensor_msgs::msg::Image LoamMapper::prepareVisImage(cv::Mat & rangeMat) {
     for (int row = 0; row < normalized_image.rows; ++row) {
       uchar hue = normalized_image.at<uchar>(row, col);
       if (hue == 0) {
-        hsv_image.at<cv::Vec3b>(row, col) = cv::Vec3b(hue, 0, 0); // Full saturation and value
+        hsv_image.at<cv::Vec3b>(row, col) = cv::Vec3b(hue, 0, 0);  // Full saturation and value
       } else {
-        hsv_image.at<cv::Vec3b>(row, col) = cv::Vec3b(hue, 255, 255); // Full saturation and value
+        hsv_image.at<cv::Vec3b>(row, col) = cv::Vec3b(hue, 255, 255);  // Full saturation and value
       }
     }
   }
@@ -379,17 +388,16 @@ sensor_msgs::msg::Image LoamMapper::prepareVisImage(cv::Mat & rangeMat) {
   cv::Mat bgr_resized;
   cv::resize(BGR, bgr_resized, cv::Size(), 1.0, 20.0);
 
-    cv_bridge::CvImage cv_image;
-    cv_image.header.frame_id = "map";
-    cv_image.header.stamp = this->get_clock()->now();
-    cv_image.encoding = "bgr8";
-    cv_image.image = bgr_resized;
+  cv_bridge::CvImage cv_image;
+  cv_image.header.frame_id = "map";
+  cv_image.header.stamp = this->get_clock()->now();
+  cv_image.encoding = "bgr8";
+  cv_image.image = bgr_resized;
 
+  sensor_msgs::msg::Image image;
+  cv_image.toImageMsg(image);
 
-    sensor_msgs::msg::Image image;
-    cv_image.toImageMsg(image);
-
-    return image;
+  return image;
 }
 
 }  // namespace loam_mapper
