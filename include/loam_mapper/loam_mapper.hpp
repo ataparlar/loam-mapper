@@ -32,6 +32,8 @@ public:
   std::string pose_txt_path_;
   std::string pcd_export_dir_;
 
+  std::string project_namespace_;
+
   double map_origin_x_;
   double map_origin_y_;
   double map_origin_z_;

@@ -4,6 +4,8 @@
     pose_txt_path: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/ytu_campus_080423_ground_truth.txt
     pcd_export_directory: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/output/
 
+    project_namespace: ytu_campus
+
     map_origin_x: 658761.0
     map_origin_y: 4542599.0
     map_origin_z: 116.250886

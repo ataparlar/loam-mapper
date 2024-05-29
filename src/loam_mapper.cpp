@@ -33,6 +33,7 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   this->declare_parameter("pcap_dir_path", "");
   this->declare_parameter("pose_txt_path", "");
   this->declare_parameter("pcd_export_directory", "");
+  this->declare_parameter("project_namespace", "");
   this->declare_parameter("map_origin_x", 0.0);
   this->declare_parameter("map_origin_y", 0.0);
   this->declare_parameter("map_origin_z", 0.0);
@@ -46,6 +47,7 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   pcap_dir_path_ = this->get_parameter("pcap_dir_path").as_string();
   pose_txt_path_ = this->get_parameter("pose_txt_path").as_string();
   pcd_export_dir_ = this->get_parameter("pcd_export_directory").as_string();
+  project_namespace_ = this->get_parameter("project_namespace").as_string();
   map_origin_x_ = this->get_parameter("map_origin_x").as_double();
   map_origin_y_ = this->get_parameter("map_origin_y").as_double();
   map_origin_z_ = this->get_parameter("map_origin_z").as_double();
@@ -270,9 +272,9 @@ void LoamMapper::process(int file_counter)
     for (auto & point : *occ_cloud_surface.cloud) {
       surface_cloud_pcl.push_back(point);
     }
-    pcl::io::savePCDFileASCII(pcd_export_dir_ + "ytu_campus_" + std::to_string(file_counter) + ".pcd", new_cloud);
-    pcl::io::savePCDFileASCII(pcd_export_dir_ + "ytu_campus_corner_" + std::to_string(file_counter) + ".pcd", corner_cloud_pcl);
-    pcl::io::savePCDFileASCII(pcd_export_dir_ + "ytu_campus_surface_" + std::to_string(file_counter) + ".pcd", surface_cloud_pcl);
+    pcl::io::savePCDFileASCII(pcd_export_dir_ + project_namespace_ + "_" + std::to_string(file_counter) + ".pcd", new_cloud);
+    pcl::io::savePCDFileASCII(pcd_export_dir_ + project_namespace_ + "_corner_" + std::to_string(file_counter) + ".pcd", corner_cloud_pcl);
+    pcl::io::savePCDFileASCII(pcd_export_dir_ + project_namespace_ + "_surface_" + std::to_string(file_counter) + ".pcd", surface_cloud_pcl);
     std::cout << "PCDs saved for PCAP number: " + std::to_string(file_counter) + "." << std::endl;
   }
 
