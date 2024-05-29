@@ -44,7 +44,7 @@ public:
   double voxel_resolution_;
   bool save_pcd_;
 
-  void process();
+  void process(int file_counter);
 
   std::vector<points_provider::PointsProvider::Points> clouds;
 

@@ -63,27 +63,35 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   pub_ptr_image_ = this->create_publisher<sensor_msgs::msg::Image>("rangeMat", 10);
 
   transform_provider = std::make_shared<transform_provider::TransformProvider>(
-    "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/"
-    "ytu_campus_080423_ground_truth.txt");
+    pose_txt_path_);
 
   transform_provider->process(map_origin_x_, map_origin_y_, map_origin_z_);
 
   points_provider = std::make_shared<points_provider::PointsProvider>(std::string(
-    "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/pcaps/"));
+    pcap_dir_path_));
   points_provider->process();
 
   image_projection = std::make_shared<image_projection::ImageProjection>();
   feature_extraction = std::make_shared<feature_extraction::FeatureExtraction>();
 
-  std::function<void(const Points &)> callback =
-    std::bind(&LoamMapper::callback_cloud_surround_out, this, std::placeholders::_1);
-  points_provider->process_pcaps_into_clouds(callback, 0, 3);
-  std::cout << "process_pcaps_into_clouds done" << std::endl;
 
-  process();
+  for (int i=0; i<points_provider->paths_pcaps_.size(); i++) {
+    std::function<void(const Points &)> callback =
+      std::bind(&LoamMapper::callback_cloud_surround_out, this, std::placeholders::_1);
+    points_provider->process_pcaps_into_clouds(callback, i, 1);
+    std::cout << "PCAP number " + std::to_string(i) + " is converted to clouds." << std::endl;
+    process(i);
+    clouds.clear();
+    std::cout << std::endl;
+
+  }
+  std::cout << "All PCAP files are converted into .pcd point clouds." << std::endl;
+  std::cout << "Destination: " << pcd_export_dir_ << std::endl;
+
+  rclcpp::shutdown();
 }
 
-void LoamMapper::process()
+void LoamMapper::process(int file_counter)
 {
   auto thing_to_cloud =
     [](const points_provider::PointsProvider::Points & points_bad, const std::string & frame_id) {
@@ -118,7 +126,12 @@ void LoamMapper::process()
   points_provider::PointsProvider::Points cloud_all_corner_;
   points_provider::PointsProvider::Points cloud_all_surface_;
 
+//  int counter = 0;
   for (auto & cloud : clouds) {
+
+//    std::cout << "total_clouds: " << clouds.size() << "\tthis_cloud: " << counter << std::endl;
+//    counter++;
+
     Points cloud_trans_undistorted;
     cloud_trans_undistorted.resize(cloud.size());
     bool first_point_flag = true;
@@ -203,7 +216,6 @@ void LoamMapper::process()
     sensor_msgs::msg::Image hsv_image = prepareVisImage(image_projection->rangeMat);
     feature_extraction->laserCloudInfoHandler(
       image_projection->extractedCloud, image_projection->cloudInfo);
-    feature_extraction->cloudPath.poses.clear();
 
     image_projection->resetParameters();
     clear_cloudInfo(image_projection->cloudInfo);
@@ -226,7 +238,7 @@ void LoamMapper::process()
     cloud_all_surface_.insert(
       cloud_all_surface_.end(), cloud_surface_trans.begin(), cloud_surface_trans.end());
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+//    std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
 
   if (save_pcd_) {
@@ -258,13 +270,21 @@ void LoamMapper::process()
     for (auto & point : *occ_cloud_surface.cloud) {
       surface_cloud_pcl.push_back(point);
     }
-    pcl::io::savePCDFileASCII(pcd_export_dir_ + "ytu_campus.pcd", new_cloud);
-    pcl::io::savePCDFileASCII(pcd_export_dir_ + "ytu_campus_corner.pcd", corner_cloud_pcl);
-    pcl::io::savePCDFileASCII(pcd_export_dir_ + "ytu_campus_surface.pcd", surface_cloud_pcl);
-    std::cout << "PCDs saved." << std::endl;
+    pcl::io::savePCDFileASCII(pcd_export_dir_ + "ytu_campus_" + std::to_string(file_counter) + ".pcd", new_cloud);
+    pcl::io::savePCDFileASCII(pcd_export_dir_ + "ytu_campus_corner_" + std::to_string(file_counter) + ".pcd", corner_cloud_pcl);
+    pcl::io::savePCDFileASCII(pcd_export_dir_ + "ytu_campus_surface_" + std::to_string(file_counter) + ".pcd", surface_cloud_pcl);
+    std::cout << "PCDs saved for PCAP number: " + std::to_string(file_counter) + "." << std::endl;
   }
 
-  std::cout << "LoamMapper is done." << std::endl;
+  cloud_all.clear();
+  cloud_all_corner_.clear();
+  cloud_all_surface_.clear();
+
+  image_projection->fullCloud.clear();
+  image_projection->extractedCloud.clear();
+  feature_extraction->extractedCloud.clear();
+  feature_extraction->cornerCloud.clear();
+  feature_extraction->surfaceCloud.clear();
 }
 
 void LoamMapper::callback_cloud_surround_out(const LoamMapper::Points & points_surround)
@@ -357,6 +377,9 @@ LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud)
 
       return point_trans;
     });
+
+//  std::cout << transform_provider->get_pose_at(cloud_trans[0].stamp_unix_seconds, cloud_trans[0].stamp_nanoseconds).pose_with_covariance.pose.position.x << std::endl;
+
   return cloud_trans;
 }
 

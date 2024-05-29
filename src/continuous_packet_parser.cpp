@@ -60,10 +60,9 @@ ContinuousPacketParser::ContinuousPacketParser()
   std::transform(
     vec_counting_numbers.begin(), vec_counting_numbers.end(), ind_block_to_first_channel_.begin(),
     [](size_t in) { return 32 * (in % 4); });
-//  std::cout << "vec_counting_numbers" << std::endl;
-  std::copy(
-    ind_block_to_first_channel_.begin(), ind_block_to_first_channel_.end(),
-    std::ostream_iterator<int>(std::cout, " "));
+//  std::copy(
+//    ind_block_to_first_channel_.begin(), ind_block_to_first_channel_.end(),
+//    std::ostream_iterator<int>(std::cout, " "));
 }
 
 void ContinuousPacketParser::process_packet_into_cloud(
@@ -184,7 +183,7 @@ void ContinuousPacketParser::process_packet_into_cloud(
         if (!has_processed_a_packet_) {
           angle_deg_azimuth_last_packet_ = angle_deg_azimuth_of_block;
           microseconds_last_packet_ = data_packet_with_header->microseconds_toh;
-          std::cout << "data_packet_with_header->microseconds_toh: " << data_packet_with_header->microseconds_toh << std::endl;
+//          std::cout << "data_packet_with_header->microseconds_toh: " << data_packet_with_header->microseconds_toh << std::endl;
           has_processed_a_packet_ = true;
           break;
         } else if (ind_block == 0) {
@@ -269,7 +268,7 @@ void ContinuousPacketParser::process_packet_into_cloud(
         }
       }
 
-      bool is_close_to_cut_area = std::abs(angle_deg_azimuth_last - angle_deg_cut_) < 2.5f;
+      bool is_close_to_cut_area = std::abs(angle_deg_azimuth_last - angle_deg_cut_) < 1.0f;
 
       if (!is_close_to_cut_area) {
         can_publish_again_ = true;

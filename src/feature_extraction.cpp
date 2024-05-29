@@ -106,9 +106,6 @@ void FeatureExtraction::extractFeatures(
   Points surfaceCloudScan;
   Points surfaceCloudScanDS;
 
-  cloudPath.header.stamp = loam_mapper::utils::Utils::get_time();
-  cloudPath.header.frame_id = "map";
-
   for (int i = 0; i < 16; i++) {
     surfaceCloudScan.clear();
 
@@ -118,7 +115,7 @@ void FeatureExtraction::extractFeatures(
       int ep =
         (cloudInfo.start_ring_index[i] * (5 - j) + cloudInfo.end_ring_index[i] * (j + 1)) / 6 - 1;
 
-      if (sp >= ep) continue;
+      if (sp >= ep || ep > 28800) continue;
 
       std::sort(cloudSmoothness.begin() + sp, cloudSmoothness.begin() + ep, by_value());
 

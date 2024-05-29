@@ -1,6 +1,6 @@
 /**:
   ros__parameters:
-    pcap_dir_path: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/pcaps/
+    pcap_dir_path: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/pcaps_by_time/
     pose_txt_path: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/ytu_campus_080423_ground_truth.txt
     pcd_export_directory: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/output/
 

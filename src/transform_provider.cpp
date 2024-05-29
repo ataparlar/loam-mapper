@@ -37,7 +37,7 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
     if (line_number == 16) {  // 16 is the mission date line in the applanix export file
       mission_date += line;
       mission_date.erase(0, 20);  // erases 20 characters from 0.
-      std::cout << "mission_date: " << mission_date << std::endl;
+//      std::cout << "mission_date: " << mission_date << std::endl;
       break;
     }
     if (line_number == 29) {  // 29 is the first data line. UTC Time is wanted
@@ -263,7 +263,7 @@ TransformProvider::Pose TransformProvider::get_pose_at(
     });
 
   size_t index = std::distance(poses_.begin(), iter_result);
-  //  std::cout << "ind: " << index << std::endl;
+//    std::cout << "ind: " << index << std::endl;
   return poses_.at(index);
 }
 
@@ -283,7 +283,7 @@ TransformProvider::Imu TransformProvider::get_imu_at(
     });
 
   size_t index = std::distance(imu_rotations_.begin(), iter_result);
-  //  std::cout << "ind: " << index << std::endl;
+//    std::cout << "ind: " << index << std::endl;
   return imu_rotations_.at(index);
 }
 

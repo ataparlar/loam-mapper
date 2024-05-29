@@ -66,7 +66,6 @@ void PointsProvider::process_pcap_into_clouds(
   const std::function<void(const Points &)> & callback_cloud_surround_out,
   continuous_packet_parser::ContinuousPacketParser & parser)
 {
-  std::cout << "processing: " << path_pcap << std::endl;
   pcpp::IFileReaderDevice * reader = pcpp::IFileReaderDevice::getReader(path_pcap.string());
   if (reader == nullptr) {
     printf("Cannot determine reader for file type\n");

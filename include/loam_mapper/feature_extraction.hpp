@@ -46,12 +46,9 @@ public:
 
   explicit FeatureExtraction();
 
-  Points cloudOccluded;
-  Points cloudOccludedNot;
   Points extractedCloud;
   Points cornerCloud;
   Points surfaceCloud;
-  nav_msgs::msg::Path cloudPath;
 
   std::vector<smoothness_t> cloudSmoothness;
   float * cloudCurvature;

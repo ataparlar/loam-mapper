@@ -35,9 +35,10 @@ public:
     const std::function<void(const Points &)>& callback_cloud_surround_out,
     continuous_packet_parser::ContinuousPacketParser& parser);
 
-private:
-  fs::path path_folder_pcaps_;
-
   std::vector<fs::path> paths_pcaps_;
+
+private:
+
+  fs::path path_folder_pcaps_;
 };
 }  // namespace loam_mapper::points_provider
