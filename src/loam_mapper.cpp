@@ -81,14 +81,14 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
     std::function<void(const Points &)> callback =
       std::bind(&LoamMapper::callback_cloud_surround_out, this, std::placeholders::_1);
     points_provider->process_pcaps_into_clouds(callback, i, 1);
-    std::cout << "PCAP number " + std::to_string(i) + " is converted to clouds." << std::endl;
+    RCLCPP_INFO(this->get_logger(), "PCAP number %s is converted to clouds.", std::to_string(i).c_str());
     process(i);
     clouds.clear();
-    std::cout << std::endl;
-
+    RCLCPP_INFO(this->get_logger(), "-----------------------------------------------");
   }
-  std::cout << "All PCAP files are converted into .pcd point clouds." << std::endl;
-  std::cout << "Destination: " << pcd_export_dir_ << std::endl;
+  RCLCPP_INFO(this->get_logger(), "All PCAP files are converted into .pcd point clouds.");
+  RCLCPP_INFO(this->get_logger(), "Destination:  %s", pcd_export_dir_.c_str());
+
 
   rclcpp::shutdown();
 }
@@ -128,12 +128,7 @@ void LoamMapper::process(int file_counter)
   points_provider::PointsProvider::Points cloud_all_corner_;
   points_provider::PointsProvider::Points cloud_all_surface_;
 
-//  int counter = 0;
   for (auto & cloud : clouds) {
-
-//    std::cout << "total_clouds: " << clouds.size() << "\tthis_cloud: " << counter << std::endl;
-//    counter++;
-
     Points cloud_trans_undistorted;
     cloud_trans_undistorted.resize(cloud.size());
     bool first_point_flag = true;
@@ -275,7 +270,7 @@ void LoamMapper::process(int file_counter)
     pcl::io::savePCDFileASCII(pcd_export_dir_ + project_namespace_ + "_" + std::to_string(file_counter) + ".pcd", new_cloud);
     pcl::io::savePCDFileASCII(pcd_export_dir_ + project_namespace_ + "_corner_" + std::to_string(file_counter) + ".pcd", corner_cloud_pcl);
     pcl::io::savePCDFileASCII(pcd_export_dir_ + project_namespace_ + "_surface_" + std::to_string(file_counter) + ".pcd", surface_cloud_pcl);
-    std::cout << "PCDs saved for PCAP number: " + std::to_string(file_counter) + "." << std::endl;
+    RCLCPP_INFO(this->get_logger(), "PCDs saved for PCAP number: %s.", std::to_string(file_counter).c_str());
   }
 
   cloud_all.clear();
@@ -379,8 +374,6 @@ LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud)
 
       return point_trans;
     });
-
-//  std::cout << transform_provider->get_pose_at(cloud_trans[0].stamp_unix_seconds, cloud_trans[0].stamp_nanoseconds).pose_with_covariance.pose.position.x << std::endl;
 
   return cloud_trans;
 }

@@ -3,6 +3,21 @@
 In Autoware Labs, LOAM Based Localization will be used. For this purpose, we need to create a tool
 for generating LOAM feature point cloud maps. This tool is created for that reason.
 
+<p align='center'>
+    <img src="images/loam_mapper_edge_and_surface_features.png" 
+        alt="loam_mapper_edge_and_surface_features" width="80%"/>
+</p>
+
+Here are the videos shows how the tool works after running.
+- Full process with the sample data. Shows Rviz point cloud visualization and saved point clouds.
+    - https://youtu.be/jVBdZYEii20
+
+- Closer look to the extracted features:
+    - https://youtu.be/b4RjppSeNmw
+    - https://youtu.be/b4RjppSeNmw
+        - Red points shows the edge features.
+        - Yellow points shows the surface features.
+
 ## Used data for development
 We are using the below data for development 
 - Ground truth pose data which contains the post-processed precise time, position and orientation data.
