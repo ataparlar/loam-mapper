@@ -27,6 +27,7 @@ include_directories(include
 set(LOAM_MAPPER_LIB_SRC
         src/utils.cpp
         src/continuous_packet_parser.cpp
+        src/continuous_packet_parser_xt32.cpp
         src/points_provider.cpp
         src/transform_provider.cpp
         src/image_projection.cpp
@@ -39,6 +40,7 @@ set(LOAM_MAPPER_LIB_HEADERS
         include/loam_mapper/csv.hpp
         include/loam_mapper/Occtree.h
         include/loam_mapper/continuous_packet_parser.hpp
+        include/loam_mapper/continuous_packet_parser_xt32.hpp
         include/loam_mapper/points_provider_base.hpp
         include/loam_mapper/points_provider.hpp
         include/loam_mapper/transform_provider.hpp
