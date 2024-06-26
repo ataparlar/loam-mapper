@@ -10,6 +10,7 @@
 #include "point_types.hpp"
 #include "date.h"
 #include "continuous_packet_parser.hpp"
+#include "loam_mapper/continuous_packet_parser_xt32.hpp"
 
 namespace loam_mapper::points_provider
 {
@@ -33,7 +34,7 @@ public:
   void process_pcap_into_clouds(
     const fs::path & path_pcap,
     const std::function<void(const Points &)>& callback_cloud_surround_out,
-    continuous_packet_parser::ContinuousPacketParser& parser);
+    continuous_packet_parser::ContinuousPacketParserXt32& parser);
 
   std::vector<fs::path> paths_pcaps_;
 

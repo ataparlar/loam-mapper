@@ -76,7 +76,7 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   image_projection = std::make_shared<image_projection::ImageProjection>();
   feature_extraction = std::make_shared<feature_extraction::FeatureExtraction>();
 
-
+std::cout << "test" << std::endl;
   for (int i=0; i<points_provider->paths_pcaps_.size(); i++) {
     std::function<void(const Points &)> callback =
       std::bind(&LoamMapper::callback_cloud_surround_out, this, std::placeholders::_1);

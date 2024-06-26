@@ -30,6 +30,45 @@ private:
   using uint8_t = std::uint8_t;
   using uint16_t = std::uint16_t;
 
+//  struct DataPacket
+//  {
+//    uint8_t udp_header[42];
+//    uint8_t pre_header[6];
+//    uint8_t header[6];
+//    DataBlock data_blocks[8];
+//    uint8_t reserved[9];
+//    uint8_t temp_flag;
+//    uint8_t return_mode;
+//    uint16_t motor_speed;
+//    uint8_t date_time[6];  // 1 byte each
+//    uint32_t microseconds_toh;
+//    uint8_t factory_info;
+//    uint32_t additional_info;
+//    [[nodiscard]] size_t get_size_data_blocks() const
+//    {
+//      return sizeof(data_blocks) / sizeof(data_blocks[0]);
+//    }
+//  } __attribute__((packed));
+
+  struct PreHeader
+  {
+    uint8_t start_of_packet_1;
+    uint8_t start_of_packet_2;
+    uint8_t protocol_version_major;
+    uint8_t protocol_version_minor;
+    uint16_t reserved;
+  } __attribute__((packed));
+
+  struct Header
+  {
+    uint8_t laser_number;
+    uint8_t block_number;
+    uint8_t first_block_return;
+    uint8_t dis_unit;
+    uint8_t return_number;
+    uint8_t udp_seq;
+  } __attribute__((packed));
+
   struct DataPoint
   {
     uint16_t distance_divided_by_4mm;
@@ -39,8 +78,8 @@ private:
 
   struct DataBlock  // each 130 byte
   {
-//    uint8_t flag_1;
-//    uint8_t flag_2;
+    //    uint8_t flag_1;
+    //    uint8_t flag_2;
     uint16_t azimuth_multiplied_by_100_deg;
     DataPoint data_points[32];
     [[nodiscard]] size_t get_size_data_points() const
@@ -49,27 +88,78 @@ private:
     }
   } __attribute__((packed));
 
-  struct DataPacket
+  struct Body {
+//    uint16_t azimuth_multiplied_by_100;
+    DataBlock data_block[8];
+  } __attribute__((packed));
+
+  struct Tail
+  {
+    uint8_t reserved[9];
+    uint8_t high_temp_shutdown;
+    uint8_t return_mode;
+    uint16_t motor_speed;
+    uint8_t year;
+    uint8_t month;
+    uint8_t day;
+    uint8_t hour;
+    uint8_t minute;
+    uint8_t second;
+    uint32_t timestamp;
+    uint8_t factory_info;
+  } __attribute__((packed));
+
+  struct AdditionalInfo
+  {
+    uint32_t udp_seq;
+  } __attribute__((packed));
+
+  struct DataPacket {
+    uint8_t udp_header[42];
+    PreHeader pre_header;
+    Header header;
+    Body body;
+    Tail tail;
+    AdditionalInfo additional_info;
+  };
+
+
+
+
+
+  struct DataPoint2
+  {
+    uint16_t distance_divided_by_4mm;
+    uint8_t reflectivity;
+    uint8_t reserved;
+  } __attribute__((packed));
+
+  struct DataBlock2  // each 130 byte
+  {
+    //    uint8_t flag_1;
+    //    uint8_t flag_2;
+    uint16_t azimuth_multiplied_by_100_deg;
+    DataPoint2 data_points[32];
+
+    [[nodiscard]] size_t get_size_data_points() const
+    {
+      return sizeof(data_points) / sizeof(data_points[0]);
+    }
+  } __attribute__((packed));
+
+  struct DataPacket2
   {
     uint8_t udp_header[42];
     uint8_t pre_header[6];
     uint8_t header[6];
-    DataBlock data_blocks[8];
-    uint8_t reserved[9];
-    uint8_t temp_flag;
-    uint8_t return_mode;
-    uint16_t motor_speed;
-    uint8_t date_time[6];  // 1 byte each
-    uint32_t microseconds_toh;
-    uint8_t factory_info;
-    uint32_t additional_info;
-    [[nodiscard]] size_t get_size_data_blocks() const
-    {
-      return sizeof(data_blocks) / sizeof(data_blocks[0]);
-    }
-  } __attribute__((packed));
+    DataBlock2 data_block[8];
+    uint8_t tail[24];
+    uint8_t additional_info;
+  };
 
-  enum class ReturnMode { Strongest, LastReturn, DualReturn, DualReturnWithConfidence };
+
+
+  enum class ReturnMode { Strongest, LastReturn, DualReturn };
 
   std::map<uint8_t, ReturnMode> map_byte_to_return_mode_;
   std::map<ReturnMode, std::string> map_return_mode_to_string_;
@@ -88,21 +178,23 @@ private:
   struct PositionPacket
   {
     uint8_t udp_header[42];
-    uint8_t reserved_01[187];
-    uint8_t temp_top_board;
-    uint8_t temp_bot_board;
-    uint8_t reserved_02[9];
-    uint32_t timestamp_microseconds_since_hour;
+    uint16_t header;
+    uint8_t date[6];
+    uint8_t time[6];
+    uint32_t microsecond_time;
+    char nmea_sentence[84];
+    uint8_t reserved[404];
+    uint8_t gps_positioning_status;
     uint8_t status_pps;
-    uint8_t status_thermal;
-    uint8_t temp_when_last_shut_from_overheat;
-    uint8_t temp_when_booted;
-    char nmea_sentence[128];
-    uint8_t reserved_03[178];
+    uint32_t reserved_2;
+//    uint8_t temp_when_last_shut_from_overheat;
+//    uint8_t temp_when_booted;
+//    char nmea_sentence[128];
+//    uint8_t reserved_03[178];
   } __attribute__((packed));
 
 
-  HesaiModel velodyne_model_;
+  HesaiModel hesai_model_;
   ReturnMode return_mode_;
 
   bool factory_bytes_are_read_at_least_once_;
