@@ -30,26 +30,6 @@ private:
   using uint8_t = std::uint8_t;
   using uint16_t = std::uint16_t;
 
-//  struct DataPacket
-//  {
-//    uint8_t udp_header[42];
-//    uint8_t pre_header[6];
-//    uint8_t header[6];
-//    DataBlock data_blocks[8];
-//    uint8_t reserved[9];
-//    uint8_t temp_flag;
-//    uint8_t return_mode;
-//    uint16_t motor_speed;
-//    uint8_t date_time[6];  // 1 byte each
-//    uint32_t microseconds_toh;
-//    uint8_t factory_info;
-//    uint32_t additional_info;
-//    [[nodiscard]] size_t get_size_data_blocks() const
-//    {
-//      return sizeof(data_blocks) / sizeof(data_blocks[0]);
-//    }
-//  } __attribute__((packed));
-
   struct PreHeader
   {
     uint8_t start_of_packet_1;
@@ -78,19 +58,12 @@ private:
 
   struct DataBlock  // each 130 byte
   {
-    //    uint8_t flag_1;
-    //    uint8_t flag_2;
     uint16_t azimuth_multiplied_by_100_deg;
     DataPoint data_points[32];
     [[nodiscard]] size_t get_size_data_points() const
     {
       return sizeof(data_points) / sizeof(data_points[0]);
     }
-  } __attribute__((packed));
-
-  struct Body {
-//    uint16_t azimuth_multiplied_by_100;
-    DataBlock data_block[8];
   } __attribute__((packed));
 
   struct Tail
@@ -109,54 +82,18 @@ private:
     uint8_t factory_info;
   } __attribute__((packed));
 
-  struct AdditionalInfo
-  {
-    uint32_t udp_seq;
-  } __attribute__((packed));
-
   struct DataPacket {
     uint8_t udp_header[42];
     PreHeader pre_header;
     Header header;
-    Body body;
+    DataBlock data_blocks[8];
     Tail tail;
-    AdditionalInfo additional_info;
-  };
-
-
-
-
-
-  struct DataPoint2
-  {
-    uint16_t distance_divided_by_4mm;
-    uint8_t reflectivity;
-    uint8_t reserved;
-  } __attribute__((packed));
-
-  struct DataBlock2  // each 130 byte
-  {
-    //    uint8_t flag_1;
-    //    uint8_t flag_2;
-    uint16_t azimuth_multiplied_by_100_deg;
-    DataPoint2 data_points[32];
-
-    [[nodiscard]] size_t get_size_data_points() const
+    uint32_t udp_seq;;
+    size_t get_size_data_blocks() const
     {
-      return sizeof(data_points) / sizeof(data_points[0]);
+      return sizeof(data_blocks) / sizeof(data_blocks[0]);
     }
-  } __attribute__((packed));
-
-  struct DataPacket2
-  {
-    uint8_t udp_header[42];
-    uint8_t pre_header[6];
-    uint8_t header[6];
-    DataBlock2 data_block[8];
-    uint8_t tail[24];
-    uint8_t additional_info;
   };
-
 
 
   enum class ReturnMode { Strongest, LastReturn, DualReturn };

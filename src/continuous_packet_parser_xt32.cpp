@@ -43,7 +43,7 @@ ContinuousPacketParserXt32::ContinuousPacketParserXt32()
   channel_to_angle_vertical_ = std::vector<float>{
     15.0F, 14.0F, 13.0F, 12.0F,  11.0F,  10.0F,  9.0F,   8.0F,   7.0F,  6.0F,  5.0F,
     4.0F,  3.0F,  2.0F,  1.0F,   0.0F,   -1.0F,  -2.0F,  -3.0F,  -4.0F, -5.0F, -6.0F,
-    -7.0F, -8.0F, -9.0F, -10.0F, -11.0F, -12.0F, -13.0F, -14.0F, -15.0F};
+    -7.0F, -8.0F, -9.0F, -10.0F, -11.0F, -12.0F, -13.0F, -14.0F, -15.0F, -16.0F};
   assert(channel_to_angle_vertical_.size() == 32);
 }
 
@@ -105,27 +105,192 @@ void ContinuousPacketParserXt32::process_packet_into_cloud(
       const auto * data_packet_with_header =
         reinterpret_cast<const DataPacket *>(rawPacket.getRawData());
 
-
-      std::cout
-        << "distance: "
-        << static_cast<float>(data_packet_with_header->body.data_block[5].data_points[20].distance_divided_by_4mm * 4)  / 1000.0f
-        << std::endl;
-      std::cout
-        << "timestamp: "
-        << data_packet_with_header->tail.timestamp
-        << std::endl;
-
-      auto year = data_packet_with_header->tail.year;
-      auto month = data_packet_with_header->tail.month;
-      auto day = data_packet_with_header->tail.day;
-      std::cout
-        << "date: "
-        << utils::Utils::byte_hex_to_string(year) << "/"
-        << utils::Utils::byte_hex_to_string(month) << "/"
-        << utils::Utils::byte_hex_to_string(day)
-        << std::endl;
+//      std::cout
+//        << "distance: "
+//        << static_cast<float>(data_packet_with_header->data_blocks[5].data_points[20].distance_divided_by_4mm * 4)  / 1000.0f
+//        << std::endl;
 
 
+      date::hh_mm_ss microseconds_since_toh =
+        date::make_time(
+//          std::chrono::hours(data_packet_with_header->tail.hour) +
+          std::chrono::minutes(data_packet_with_header->tail.minute) +
+          std::chrono::seconds(data_packet_with_header->tail.second) +
+          std::chrono::microseconds(data_packet_with_header->tail.timestamp)
+          );
+      double microseconds_toh =
+        data_packet_with_header->tail.minute*60000000 +
+        data_packet_with_header->tail.second*1000000 +
+        data_packet_with_header->tail.timestamp;
+
+
+      auto hesai_model =
+        map_byte_to_hesai_model_.at(data_packet_with_header->pre_header.protocol_version_major);
+      if (hesai_model != HesaiModel::PandarXT) {
+        throw std::runtime_error(
+          "hesai_model was expected to be: " +
+          map_hesai_model_to_string_.at(HesaiModel::PandarXT) +
+          " but it was: " + map_hesai_model_to_string_.at(hesai_model));
+      }
+
+      auto return_mode = // dual
+        map_byte_to_return_mode_.at(data_packet_with_header->tail.return_mode);
+
+      // I can only process Single Return Modes for now
+//      if (return_mode != ReturnMode::Strongest && return_mode != ReturnMode::LastReturn) {
+//        throw std::runtime_error(
+//          "return_mode was expected to be either: " +
+//          map_return_mode_to_string_.at(ReturnMode::Strongest) +
+//          " or: " + map_return_mode_to_string_.at(ReturnMode::LastReturn) +
+//          " but it was: " + map_return_mode_to_string_.at(return_mode));
+//      }
+
+      if (!factory_bytes_are_read_at_least_once_) {
+        hesai_model_ = hesai_model;
+        return_mode_ = return_mode;
+        factory_bytes_are_read_at_least_once_ = true;
+      } else {
+        if (hesai_model != hesai_model_) {
+          throw std::runtime_error(
+            "hesai_model was expected to be: " +
+            map_hesai_model_to_string_.at(hesai_model) +
+            " but it was: " + map_hesai_model_to_string_.at(hesai_model));
+        }
+        if (return_mode != return_mode_) {
+          throw std::runtime_error(
+            "return_mode was expected to be: " + map_return_mode_to_string_.at(return_mode_) +
+            " but it was: " + map_return_mode_to_string_.at(return_mode));
+        }
+      }
+
+
+      double speed_deg_per_microseconds_angle_azimuth;
+      float angle_deg_azimuth_last;
+      for (size_t ind_block = 0; ind_block < data_packet_with_header->get_size_data_blocks(); ind_block++)
+      {
+        const auto & data_block = data_packet_with_header->data_blocks[ind_block];
+        float angle_deg_azimuth_of_block =
+          static_cast<float>(data_block.azimuth_multiplied_by_100_deg) / 100.0f;
+
+        if (!has_processed_a_packet_) {
+          angle_deg_azimuth_last_packet_ = angle_deg_azimuth_of_block;
+          microseconds_last_packet_ = microseconds_toh;
+          //          std::cout << "data_packet_with_header->microseconds_toh: " << data_packet_with_header->microseconds_toh << std::endl;
+          has_processed_a_packet_ = true;
+          break;
+        } else if (ind_block == 0) {
+          // Compensate for azimuth angular rollover
+          float angle_deg_azimuth_increased = angle_deg_azimuth_of_block;
+          if (angle_deg_azimuth_of_block < angle_deg_azimuth_last_packet_) {
+            angle_deg_azimuth_increased += 360.0f;
+          }
+          float angle_deg_angle_delta =
+            angle_deg_azimuth_increased - angle_deg_azimuth_last_packet_;
+
+          // Compensate for ToH microseconds rollover
+
+          uint32_t microseconds_toh_current_increased = microseconds_toh;
+          if (microseconds_toh < microseconds_last_packet_) {
+            microseconds_toh_current_increased += 3600000000U;
+            // Increase internal epoch hour time point
+            tp_hours_since_epoch += std::chrono::hours(1);
+          }
+          uint32_t microseconds_delta =
+            microseconds_toh_current_increased - microseconds_last_packet_;
+
+          speed_deg_per_microseconds_angle_azimuth =
+            static_cast<double>(angle_deg_angle_delta) / microseconds_delta;
+
+          angle_deg_azimuth_last_packet_ = angle_deg_azimuth_of_block;
+          microseconds_last_packet_ = microseconds_toh;
+        }
+
+        for (size_t ind_point = 0; ind_point < data_block.get_size_data_points(); ind_point++) {
+          const auto & data_point = data_block.data_points[ind_point];
+
+          double timing_offset_from_first_firing;
+          double timing_offset_from_first_block;
+
+          if (return_mode == ReturnMode::DualReturn) {
+            if (ind_block == 0 || ind_block == 1) {
+              timing_offset_from_first_block = 5.632 - (50 * 3);
+            } else if (ind_block == 2 || ind_block == 3) {
+              timing_offset_from_first_block = 5.632 - (50 * 2);
+            } else if (ind_block == 4 || ind_block == 5) {
+              timing_offset_from_first_block = 5.632 - (50 * 1);
+            } else if (ind_block == 6 || ind_block == 7) {
+              timing_offset_from_first_block = 5.632;
+            }
+            timing_offset_from_first_firing = 1.512 * (ind_point-1) + 0.368;
+          } else if (return_mode == ReturnMode::LastReturn) {
+            timing_offset_from_first_block = 5.632 - (50 * (8 - ind_block+1));
+            timing_offset_from_first_firing = 1.512 * (ind_point-1) + 0.368;
+          }
+
+          float angle_deg_azimuth_point =
+            angle_deg_azimuth_of_block +
+            static_cast<float>(
+              speed_deg_per_microseconds_angle_azimuth * timing_offset_from_first_firing);
+
+          if (angle_deg_azimuth_point >= 360.0f) {
+            angle_deg_azimuth_point -= 360.0f;
+          }
+
+          angle_deg_azimuth_last = angle_deg_azimuth_point;
+          float angle_rad_azimuth_point = utils::Utils::deg_to_rad(angle_deg_azimuth_point);
+          float angle_deg_vertical = channel_to_angle_vertical_.at(ind_point);
+          float angle_rad_vertical = utils::Utils::deg_to_rad(angle_deg_vertical);
+          float dist_m = static_cast<float>(data_point.distance_divided_by_4mm * 4) / 1000.0f;
+          float dist_xy = dist_m * std::cos(angle_rad_vertical);
+          Point point;
+          point.x = dist_xy * std::sin(angle_rad_azimuth_point);
+          point.y = dist_xy * std::cos(angle_rad_azimuth_point);
+          point.z = dist_m * std::sin(angle_rad_vertical);
+          point.intensity = data_point.reflectivity;
+//          std::vector<int> ring_vector{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+//                                       17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
+//          point.ring = ring_vector.at(ind_point);
+          point.ring = ind_point;
+          point.horizontal_angle = angle_deg_azimuth_point;
+          point.stamp_unix_seconds =
+            std::chrono::seconds(
+              tp_hours_since_epoch.time_since_epoch() + microseconds_since_toh.minutes() +
+              microseconds_since_toh.seconds())
+              .count();
+          point.stamp_nanoseconds =
+            std::chrono::nanoseconds(microseconds_since_toh.subseconds()).count();
+
+
+          if (std::sqrt(std::pow(point.x, 2) + std::pow(point.y, 2) + std::pow(point.z, 2)) < 2.0) {
+            continue;
+          } else if (
+            std::sqrt(std::pow(point.x, 2) + std::pow(point.y, 2) + std::pow(point.z, 2)) > 60) {
+            continue;
+          }
+
+          if (dist_m != 0) {
+            cloud_.push_back(point);
+          }
+        }
+      }
+      bool is_close_to_cut_area = std::abs(angle_deg_azimuth_last - angle_deg_cut_) < 1.0f;
+
+      if (!is_close_to_cut_area) {
+        can_publish_again_ = true;
+      }
+
+      if (can_publish_again_ && is_close_to_cut_area) {
+        callback_cloud_surround_out(cloud_);
+        cloud_.clear();
+        can_publish_again_ = false;
+      }
+
+      break;
+    }
+    default: {
+      //          std::cerr << "Unknown package with length: " << rawPacket.getFrameLength() <<
+      //          std::endl;
+      break;
     }
   }
 }

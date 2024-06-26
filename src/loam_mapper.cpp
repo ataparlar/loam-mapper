@@ -235,7 +235,7 @@ void LoamMapper::process(int file_counter)
     cloud_all_surface_.insert(
       cloud_all_surface_.end(), cloud_surface_trans.begin(), cloud_surface_trans.end());
 
-//    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 
   if (save_pcd_) {

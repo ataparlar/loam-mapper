@@ -13,9 +13,12 @@
     map_origin_y: 4542599.0
     map_origin_z: 116.250886
 
-    imu2lidar_roll: 179.623
-    imu2lidar_pitch: -0.44
-    imu2lidar_yaw: 0.675
+#    imu2lidar_roll: 179.623
+#    imu2lidar_pitch: -0.44
+#    imu2lidar_yaw: 0.675
+    imu2lidar_roll: -179.594
+    imu2lidar_pitch: -0.465
+    imu2lidar_yaw: 179.633
 
     enable_ned2enu: true
     voxel_resolution: 0.2
