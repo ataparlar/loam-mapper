@@ -196,7 +196,7 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       }
 
       imu.imu.angular_velocity.set__x(in.y_angular_rate);
-      imu.imu.angular_velocity.set__y(-in.x_angular_rate);
+      imu.imu.angular_velocity.set__y(in.x_angular_rate);
       imu.imu.angular_velocity.set__z(-in.z_angular_rate);
       std::array<double, 3> angular_rate_variances{
         std::pow(in.pitch_std, 2),  std::pow(in.roll_std, 2), std::pow(-in.heading_std, 2),
@@ -226,7 +226,7 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       imu.stamp_nanoseconds = pose.stamp_nanoseconds;
 
       std::array<double, 6> variances{
-        std::pow(in.x_vel_std, 2), std::pow(-in.y_vel_std, 2),  std::pow(-in.z_vel_std, 2),
+        std::pow(in.x_vel_std, 2), std::pow(in.y_vel_std, 2),  std::pow(-in.z_vel_std, 2),
         std::pow(in.roll_std, 2),  std::pow(in.pitch_std, 2), std::pow(in.heading_std, 2),
       };
 

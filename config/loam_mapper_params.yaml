@@ -3,9 +3,22 @@
 #    pcap_dir_path: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/pcaps_by_time/
 #    pose_txt_path: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/ytu_campus_080423_ground_truth.txt
 #    pcd_export_directory: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/output/
-    pcap_dir_path: /home/ataparlar/data/task_spesific/bosphorus/pcaps/
-    pose_txt_path: /home/ataparlar/data/task_spesific/bosphorus/2024_05_22-03_21_16-gen-route2-map-4_eurasia_out_bomonti_ent_raw_gnss_export.txt
-    pcd_export_directory: /home/ataparlar/data/task_spesific/bosphorus/output/
+
+    pcap_dir_path: /home/ataparlar/data/task_spesific/hesai_parser/bosphorus_bridge/pcaps/
+    pose_txt_path: /home/ataparlar/data/task_spesific/hesai_parser/bosphorus_bridge/bosphorus_bridge_lidar_adjusted_export.txt
+    pcd_export_directory: /home/ataparlar/data/task_spesific/hesai_parser/bosphorus_bridge/output/
+
+#    pcap_dir_path: /home/ataparlar/data/task_spesific/hesai_parser/eurasia_tunnel/pcaps/
+#    pose_txt_path: /home/ataparlar/data/task_spesific/hesai_parser/eurasia_tunnel/eurasia_tunnel_lidar_adjusted_export.txt
+#    pcd_export_directory: /home/ataparlar/data/task_spesific/hesai_parser/eurasia_tunnel/output/
+
+#    pcap_dir_path: /home/ataparlar/data/task_spesific/hesai_parser/tek_ist/pcaps/
+#    pose_txt_path: /home/ataparlar/data/task_spesific/hesai_parser/tek_ist/tek_ist_lidar_adjusted_export.txt
+#    pcd_export_directory: /home/ataparlar/data/task_spesific/hesai_parser/tek_ist/output/
+
+#    pcap_dir_path: /home/ataparlar/data/task_spesific/hesai_parser/ytu_works/pcaps/
+#    pose_txt_path: /home/ataparlar/data/task_spesific/hesai_parser/ytu_works/ytu_area_lidar_adjusted_export.txt
+#    pcd_export_directory: /home/ataparlar/data/task_spesific/hesai_parser/ytu_works/output/
 
     project_namespace: ytu_campus
 
@@ -18,7 +31,7 @@
 #    imu2lidar_yaw: 0.675
     imu2lidar_roll: -179.594
     imu2lidar_pitch: -0.465
-    imu2lidar_yaw: 179.633
+    imu2lidar_yaw: -178.633
 
     enable_ned2enu: true
     voxel_resolution: 0.2

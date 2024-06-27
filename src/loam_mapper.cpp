@@ -235,7 +235,7 @@ void LoamMapper::process(int file_counter)
     cloud_all_surface_.insert(
       cloud_all_surface_.end(), cloud_surface_trans.begin(), cloud_surface_trans.end());
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+//    std::this_thread::sleep_for(std::chrono::milliseconds(250));
   }
 
   if (save_pcd_) {
@@ -286,21 +286,27 @@ void LoamMapper::process(int file_counter)
 
 void LoamMapper::callback_cloud_surround_out(const LoamMapper::Points & points_surround)
 {
+  pub_ptr_basic_cloud_current_->publish(*points_to_cloud(points_surround, "map"));
+  std::this_thread::sleep_for(std::chrono::milliseconds(150));
   clouds.push_back(points_surround);
 }
 
 sensor_msgs::msg::PointCloud2::SharedPtr LoamMapper::points_to_cloud(
   const LoamMapper::Points & points_bad, const std::string & frame_id)
 {
-  using CloudModifier = point_cloud_msg_wrapper::PointCloud2Modifier<point_types::PointXYZI>;
+  using CloudModifier = point_cloud_msg_wrapper::PointCloud2Modifier<point_types::PointXYZIR>;
   PointCloud2::SharedPtr cloud_ptr_current = std::make_shared<PointCloud2>();
   CloudModifier cloud_modifier_current(*cloud_ptr_current, frame_id);
   cloud_modifier_current.resize(points_bad.size());
   std::transform(
     std::execution::par, points_bad.cbegin(), points_bad.cend(), cloud_modifier_current.begin(),
     [](const points_provider::PointsProvider::Point & point_bad) {
-      return point_types::PointXYZI{
-        point_bad.x, point_bad.y, point_bad.z, static_cast<float>(point_bad.intensity)};
+      return point_types::PointXYZIR{
+        point_bad.x, point_bad.y, point_bad.z, static_cast<float>(point_bad.intensity),
+//        static_cast<float>(point_bad.stamp_nanoseconds),
+//        static_cast<float>(point_bad.horizontal_angle),
+        static_cast<float>(point_bad.ring)
+      };
     });
   return cloud_ptr_current;
 }
