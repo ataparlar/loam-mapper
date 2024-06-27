@@ -135,6 +135,7 @@ void LoamMapper::process(int file_counter)
     std::transform(
       std::execution::par, cloud.cbegin(), cloud.cend(), cloud_trans_undistorted.begin(),
       [this, &first_point_flag](const points_provider::PointsProvider::Point & point) {
+
         auto imu_ =
           transform_provider->get_imu_at(point.stamp_unix_seconds, point.stamp_nanoseconds);
         auto pose_ =
@@ -235,7 +236,7 @@ void LoamMapper::process(int file_counter)
     cloud_all_surface_.insert(
       cloud_all_surface_.end(), cloud_surface_trans.begin(), cloud_surface_trans.end());
 
-//    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 
   if (save_pcd_) {
@@ -287,7 +288,7 @@ void LoamMapper::process(int file_counter)
 void LoamMapper::callback_cloud_surround_out(const LoamMapper::Points & points_surround)
 {
   pub_ptr_basic_cloud_current_->publish(*points_to_cloud(points_surround, "map"));
-  std::this_thread::sleep_for(std::chrono::milliseconds(150));
+//  std::this_thread::sleep_for(std::chrono::milliseconds(150));
   clouds.push_back(points_surround);
 }
 

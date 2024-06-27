@@ -210,15 +210,16 @@ void ContinuousPacketParserXt32::process_packet_into_cloud(
 
             speed_deg_per_microseconds_angle_azimuth =
               static_cast<double>(angle_deg_angle_delta) / microseconds_delta;
+//            speed_deg_per_microseconds_angle_azimuth = 62.831852999999995 / 1000000;
 
             angle_deg_azimuth_last_packet_ = angle_deg_azimuth_of_block_first;
             microseconds_last_packet_ = microseconds_toh;
           }
           for (size_t ind_point = 0; ind_point < data_block_first.get_size_data_points(); ind_point++) {
-            const auto & data_point_first = data_block_first.data_points[ind_point];
+//            const auto & data_point_first = data_block_first.data_points[ind_point];
             const auto & data_point_second = data_block_second.data_points[ind_point];
 
-            double timing_offset_from_first_block = 5.632 - (50 * (8 - ind_block+1));
+//            double timing_offset_from_first_block = 5.632 - (50 * (8 - ind_block+1));
             double timing_offset_from_first_firing = 1.512 * (ind_point-1) + 0.368;
 
             float angle_deg_azimuth_point =
@@ -252,7 +253,7 @@ void ContinuousPacketParserXt32::process_packet_into_cloud(
             point.stamp_nanoseconds =
               std::chrono::nanoseconds(microseconds_since_toh.subseconds()).count();
 
-            if (dist_m != 0 /* && ind_point != 0 */ ) {
+            if (dist_m != 0  && ind_point != 0  ) {
               cloud_.push_back(point);
             }
 
