@@ -5,7 +5,6 @@
 #include "loam_mapper/utils.hpp"
 
 #include <Eigen/Geometry>
-#include <GeographicLib/LocalCartesian.hpp>
 
 #include <algorithm>
 #include <array>
@@ -159,11 +158,24 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       in.z_vel, in.x_angular_rate, in.y_angular_rate, in.z_angular_rate, in.x_acceleration,
       in.y_acceleration, in.z_acceleration, in.x_vel_std, in.y_vel_std, in.z_vel_std, in.roll_std,
       in.pitch_std, in.heading_std)) {
+
+      double x, y, z;
+      if (!origin_init) {
+        local_cartesian_.Reset(in.latitude, in.longitude, in.ellipsoid_height);
+        origin_init = true;
+        continue;
+      } else {
+        local_cartesian_.Forward(in.latitude, in.longitude, in.ellipsoid_height, x, y, z);
+      }
+
       Pose pose;
       Imu imu;
-      pose.pose_with_covariance.pose.position.set__x(in.easting - origin_x);
-      pose.pose_with_covariance.pose.position.set__y(in.northing - origin_y);
-      pose.pose_with_covariance.pose.position.set__z(in.ellipsoid_height - origin_z);
+//      pose.pose_with_covariance.pose.position.set__x(in.easting - origin_x);
+//      pose.pose_with_covariance.pose.position.set__y(in.northing - origin_y);
+//      pose.pose_with_covariance.pose.position.set__z(in.ellipsoid_height - origin_z);
+      pose.pose_with_covariance.pose.position.set__x(x);
+      pose.pose_with_covariance.pose.position.set__y(y);
+      pose.pose_with_covariance.pose.position.set__z(z);
       Eigen::AngleAxisd angle_axis_x(utils::Utils::deg_to_rad(in.roll), Eigen::Vector3d::UnitY());
       Eigen::AngleAxisd angle_axis_y(utils::Utils::deg_to_rad(in.pitch), Eigen::Vector3d::UnitX());
       Eigen::AngleAxisd angle_axis_z(
@@ -173,6 +185,7 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       pose.velocity.z = in.z_vel;
 
       Eigen::Matrix3d orientation_enu(angle_axis_z * angle_axis_y * angle_axis_x);
+//      Eigen::Matrix3d orientation_enu(angle_axis_x * angle_axis_y * angle_axis_z);
 
       Eigen::Quaterniond q(orientation_enu);
       pose.pose_with_covariance.pose.orientation.set__x(q.x());

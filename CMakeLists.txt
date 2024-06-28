@@ -19,9 +19,11 @@ find_package(pcl_conversions REQUIRED)
 find_package(PCL REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(cv_bridge REQUIRED)
+find_package(GeographicLib REQUIRED)
 
 include_directories(include
         ${PCL_INCLUDE_DIRS}
+        ${GeographicLib_INCLUDE_DIRS}
         ${PcapPlusPlus_INCLUDE_DIRS})
 
 set(LOAM_MAPPER_LIB_SRC
@@ -55,6 +57,7 @@ ament_target_dependencies(${PROJECT_NAME} rclcpp PcapPlusPlus PCL pcl_conversion
         sensor_msgs nav_msgs visualization_msgs OpenCV cv_bridge)
 target_link_libraries(${PROJECT_NAME}
         ${PCL_LIBRARIES}
+        ${GeographicLib_LIBRARIES}
         ${PcapPlusPlus_LIBRARIES})
 
 if (BUILD_TESTING)

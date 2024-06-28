@@ -342,12 +342,19 @@ LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud)
       Eigen::Affine3d affine_sensor2map(Eigen::Affine3d::Identity());
 
       Eigen::Affine3d affine_imu2lidar(Eigen::Affine3d::Identity());
+//      affine_imu2lidar.matrix().topLeftCorner<3, 3>() =
+//        Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_yaw_), Eigen::Vector3d::UnitZ())
+//          .toRotationMatrix() *
+//        Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_pitch_), Eigen::Vector3d::UnitY())
+//          .toRotationMatrix() *
+//        Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_roll_), Eigen::Vector3d::UnitX())
+//          .toRotationMatrix();
       affine_imu2lidar.matrix().topLeftCorner<3, 3>() =
-        Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_yaw_), Eigen::Vector3d::UnitZ())
+        Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_roll_), Eigen::Vector3d::UnitX())
           .toRotationMatrix() *
         Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_pitch_), Eigen::Vector3d::UnitY())
           .toRotationMatrix() *
-        Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_roll_), Eigen::Vector3d::UnitX())
+        Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_yaw_), Eigen::Vector3d::UnitZ())
           .toRotationMatrix();
 
       if (enable_ned2enu_) {
