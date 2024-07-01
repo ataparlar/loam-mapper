@@ -287,7 +287,7 @@ void LoamMapper::process(int file_counter)
 
 void LoamMapper::callback_cloud_surround_out(const LoamMapper::Points & points_surround)
 {
-  pub_ptr_basic_cloud_current_->publish(*points_to_cloud(points_surround, "map"));
+//  pub_ptr_basic_cloud_current_->publish(*points_to_cloud(points_surround, "map"));
 //  std::this_thread::sleep_for(std::chrono::milliseconds(150));
   clouds.push_back(points_surround);
 }

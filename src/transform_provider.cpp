@@ -159,14 +159,36 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       in.y_acceleration, in.z_acceleration, in.x_vel_std, in.y_vel_std, in.z_vel_std, in.roll_std,
       in.pitch_std, in.heading_std)) {
 
-      double x, y, z;
+//      if (!origin_init) {
+//        local_cartesian_.Reset(in.latitude, in.longitude, in.ellipsoid_height);
+//        origin_init = true;
+//        continue;
+//      } else {
+//        local_cartesian_.Forward(in.latitude, in.longitude, in.ellipsoid_height, x, y, z);
+//      }
+
+
       if (!origin_init) {
-        local_cartesian_.Reset(in.latitude, in.longitude, in.ellipsoid_height);
+        GeographicLib::UTMUPS::Forward(in.latitude, in.longitude, zone, northp, origin_x_, origin_y_);
+        origin_z_ = in.ellipsoid_height;
         origin_init = true;
         continue;
       } else {
-        local_cartesian_.Forward(in.latitude, in.longitude, in.ellipsoid_height, x, y, z);
+        GeographicLib::UTMUPS::Forward(in.latitude, in.longitude, zone, northp, x_current, y_current);
+        x = x_current - origin_x_;
+        y = y_current - origin_y_;
+        z = in.ellipsoid_height - origin_z_;
       }
+
+//      double x, y, z; int zone; bool northp; int prec=8;
+//      GeographicLib::UTMUPS::Forward(in.latitude, in.longitude, zone, northp, x, y);
+//      std::string mgrs_string;
+//      GeographicLib::MGRS::Forward(zone, northp, x, y, prec, mgrs_string);
+////      std::cout << mgrs_string << std::endl;
+//      std::vector coords = parse_mgrs_coordinates(mgrs_string);
+//      x = coords.at(0);
+//      y = coords.at(1);
+//      z = in.ellipsoid_height;
 
       Pose pose;
       Imu imu;
@@ -298,6 +320,24 @@ TransformProvider::Imu TransformProvider::get_imu_at(
   size_t index = std::distance(imu_rotations_.begin(), iter_result);
 //    std::cout << "ind: " << index << std::endl;
   return imu_rotations_.at(index);
+}
+
+std::vector<double> TransformProvider::parse_mgrs_coordinates(const std::string & mgrs_string) {
+  std::string mgrs_grid = mgrs_string.substr(0, 5);
+  std::string mgrs_x_str = mgrs_string.substr(5, 8);
+  std::string mgrs_y_str = mgrs_string.substr(13, 8);
+
+  double mgrs_x = std::stod(mgrs_x_str);
+  mgrs_x /= 1000;
+
+  double mgrs_y = std::stod(mgrs_y_str);
+  mgrs_y /= 1000;
+
+  return std::vector{mgrs_x, mgrs_y};
+}
+
+std::string TransformProvider::parse_mgrs_zone(const std::string & mgrs_string) {
+  return mgrs_string.substr(0, 5);
 }
 
 }  // namespace loam_mapper::transform_provider

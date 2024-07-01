@@ -9,6 +9,7 @@
 #include <sensor_msgs/msg/imu.hpp>
 
 #include <GeographicLib/LocalCartesian.hpp>
+#include <GeographicLib/MGRS.hpp>
 
 #include <boost/filesystem.hpp>
 
@@ -58,12 +59,21 @@ public:
 
   Imu get_imu_at(uint32_t stamp_unix_seconds, uint32_t stamp_nanoseconds);
 
+  std::vector<double> parse_mgrs_coordinates(const std::string & mgrs_string);
+  std::string parse_mgrs_zone(const std::string & mgrs_string);
+
 private:
   fs::path path_file_ascii_output_;
   std::string header_line_string;
   std::string time_string;
   int data_line_number;
   std::string mission_date;
+
+  double x, y, z,
+    origin_x_, origin_y_, origin_z_,
+    x_current, y_current, z_current;
+  int zone; bool northp; int prec=8;
+
 };
 }  // namespace loam_mapper::transform_provider
 
