@@ -10,7 +10,7 @@
 #include "point_types.hpp"
 #include "date.h"
 #include "continuous_packet_parser.hpp"
-#include "loam_mapper/continuous_packet_parser_xt32.hpp"
+#include "continuous_packet_parser_xt32.hpp"
 
 namespace loam_mapper::points_provider
 {
@@ -25,16 +25,18 @@ public:
 
   void process() override;
 
+  template <typename parser_type>
   void process_pcaps_into_clouds(
     std::function<void(const Points &)> & callback_cloud_surround_out,
     size_t index_start,
     size_t count);
   std::string info() override;
 
+  template <typename parser_type>
   void process_pcap_into_clouds(
     const fs::path & path_pcap,
     const std::function<void(const Points &)>& callback_cloud_surround_out,
-    continuous_packet_parser::ContinuousPacketParserXt32& parser);
+    parser_type& parser);
 
   std::vector<fs::path> paths_pcaps_;
 

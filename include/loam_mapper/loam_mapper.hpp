@@ -12,6 +12,8 @@
 #include <nav_msgs/msg/path.hpp>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
+#include "loam_mapper/continuous_packet_parser.hpp"
+#include "loam_mapper/continuous_packet_parser_xt32.hpp"
 
 
 namespace loam_mapper

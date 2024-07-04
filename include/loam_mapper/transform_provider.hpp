@@ -8,7 +8,6 @@
 #include <geometry_msgs/msg/pose_with_covariance.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 
-#include <GeographicLib/LocalCartesian.hpp>
 #include <GeographicLib/MGRS.hpp>
 #include <GeographicLib/TransverseMercatorExact.hpp>
 
@@ -29,9 +28,6 @@ public:
   explicit TransformProvider(const std::string & path_file_ascii_output);
 
   void process(double origin_x, double origin_y, double origin_z);
-
-  bool origin_init = false;
-  GeographicLib::LocalCartesian local_cartesian_;
 
   struct Velocity
   {

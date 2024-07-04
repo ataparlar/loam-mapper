@@ -15,7 +15,6 @@
  */
 
 #include "loam_mapper/loam_mapper.hpp"
-
 #include "loam_mapper/Occtree.h"
 
 #include <Eigen/Geometry>
@@ -49,6 +48,7 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   this->declare_parameter("pose_txt_path", "");
   this->declare_parameter("pcd_export_directory", "");
   this->declare_parameter("project_namespace", "");
+  this->declare_parameter("sensor_model", "Hesai XT32");
   this->declare_parameter("map_origin_x", 0.0);
   this->declare_parameter("map_origin_y", 0.0);
   this->declare_parameter("map_origin_z", 0.0);
@@ -92,7 +92,7 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   for (int i = 0; i < points_provider->paths_pcaps_.size(); i++) {
     std::function<void(const Points &)> callback =
       std::bind(&LoamMapper::callback_cloud_surround_out, this, std::placeholders::_1);
-    points_provider->process_pcaps_into_clouds(callback, i, 1);
+    points_provider->process_pcaps_into_clouds<points_provider::continuous_packet_parser::ContinuousPacketParserXt32>(callback, i, 1);
     RCLCPP_INFO(
       this->get_logger(), "PCAP number %s is converted to clouds.", std::to_string(i).c_str());
     process(i);
@@ -265,7 +265,7 @@ void LoamMapper::process(int file_counter)
     cloud_all_surface_.insert(
       cloud_all_surface_.end(), cloud_surface_trans.begin(), cloud_surface_trans.end());
 
-    //    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 
   if (save_pcd_ && !cloud_all.empty()) {

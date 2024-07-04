@@ -61,6 +61,7 @@ void PointsProvider::process()
   }
 }
 
+template <typename parser_type>
 void PointsProvider::process_pcaps_into_clouds(
   std::function<void(const Points &)> & callback_cloud_surround_out,
   const size_t index_start,
@@ -71,16 +72,19 @@ void PointsProvider::process_pcaps_into_clouds(
   }
 
 //  continuous_packet_parser::ContinuousPacketParser packet_parser;
-  continuous_packet_parser::ContinuousPacketParserXt32 packet_parser;
+//  continuous_packet_parser::ContinuousPacketParserXt32 packet_parser;
+  parser_type packet_parser;
   for (size_t i = index_start; i < index_start + count; ++i) {
     process_pcap_into_clouds(paths_pcaps_.at(i), callback_cloud_surround_out, packet_parser);
   }
 }
 
+template <typename parser_type>
 void PointsProvider::process_pcap_into_clouds(
   const fs::path & path_pcap,
   const std::function<void(const Points &)> & callback_cloud_surround_out,
-  continuous_packet_parser::ContinuousPacketParserXt32 & parser)
+  parser_type & parser)
+//  continuous_packet_parser::ContinuousPacketParserXt32 & parser)
 {
   pcpp::IFileReaderDevice * reader = pcpp::IFileReaderDevice::getReader(path_pcap.string());
   if (reader == nullptr) {
