@@ -32,6 +32,27 @@ std::string Utils::byte_hex_to_string(uint8_t byte_hex)
   return ss.str();
 }
 
+//float Utils::byte_hex_to_float(const uint8_t& hex) {
+//  std::string hexStr = byte_hex_to_string(hex);
+//
+//  // Ensure the input string is exactly 8 characters long (4 bytes)
+////  if (hexStr.length() != 8) {
+////    throw std::invalid_argument("Hex string must be 8 characters long");
+////  }
+//
+//  // Convert hex string to unsigned int
+//  uint32_t hexValue;
+//  std::stringstream ss;
+//  ss << std::hex << hexStr;
+//  ss >> hexValue;
+//
+//  // Convert the unsigned int to float
+//  float floatValue;
+//  std::memcpy(&floatValue, &hexValue, sizeof(floatValue));
+//
+//  return floatValue;
+//}
+
 std::string Utils::bytes_hexes_to_string(const std::vector<uint8_t> & bytes_hexes)
 {
   std::string output;
