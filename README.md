@@ -93,3 +93,33 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 | save_pcd             | Decider parameter for saving point cloud as `pcd`.                                    |
 
 
+
+## Paper
+
+Part of the code is adapted from [LIO-SAM (IROS-2020)](./config/doc/paper.pdf).
+```
+@inproceedings{liosam2020shan,
+  title={LIO-SAM: Tightly-coupled Lidar Inertial Odometry via Smoothing and Mapping},
+  author={Shan, Tixiao and Englot, Brendan and Meyers, Drew and Wang, Wei and Ratti, Carlo and Rus Daniela},
+  booktitle={IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+  pages={5135-5142},
+  year={2020},
+  organization={IEEE}
+}
+```
+
+Part of the code is adapted from [LeGO-LOAM](https://github.com/RobustFieldAutonomyLab/LeGO-LOAM).
+```
+@inproceedings{legoloam2018shan,
+  title={LeGO-LOAM: Lightweight and Ground-Optimized Lidar Odometry and Mapping on Variable Terrain},
+  author={Shan, Tixiao and Englot, Brendan},
+  booktitle={IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+  pages={4758-4765},
+  year={2018},
+  organization={IEEE}
+}
+```
+
+## Acknowledgement
+
+- loam_mapper is based on the feature extraction part of LIO-SAM (Shan, Tixiao and Englot, Brendan and Meyers, Drew and Wang, Wei and Ratti, Carlo and Rus Daniela. LIO-SAM: Tightly-coupled Lidar Inertial Odometry via Smoothing and Mapping).
