@@ -47,13 +47,13 @@ ImageProjection::ImageProjection()
 
 void ImageProjection::allocateMemory()
 {
-  fullCloud.resize(16 * 1800);
+  fullCloud.resize(32 * 2000);
 
-  cloudInfo.start_ring_index.assign(16, 0);
-  cloudInfo.end_ring_index.assign(16, 0);
+  cloudInfo.start_ring_index.assign(32, 0);
+  cloudInfo.end_ring_index.assign(32, 0);
 
-  cloudInfo.point_col_index.assign(16 * 1800, 0);
-  cloudInfo.point_range.assign(16 * 1800, 0);
+  cloudInfo.point_col_index.assign(32 * 2000, 0);
+  cloudInfo.point_range.assign(32Z * 2000, 0);
 
   resetParameters();
 }
@@ -96,21 +96,21 @@ void ImageProjection::projectPointCloud(Points & laserCloudMsg)
 
     int rowIdn = thisPoint.ring;
 
-    if (rowIdn < 0 || rowIdn >= 16) continue;
+    if (rowIdn < 0 || rowIdn >= 32) continue;
 
     int columnIdn = -1;
     float horizonAngle = thisPoint.horizontal_angle;
-    static float ang_res_x = 360.0 / float(1800);
-    columnIdn = 1800 - round((horizonAngle) / ang_res_x);
-    if (columnIdn >= 1800) columnIdn -= 1800;
-    if (columnIdn < 0 || columnIdn >= 1800) continue;
+    static float ang_res_x = 360.0 / float(2000);
+    columnIdn = 2000 - round((horizonAngle) / ang_res_x);
+    if (columnIdn >= 2000) columnIdn -= 2000;
+    if (columnIdn < 0 || columnIdn >= 2000) continue;
 
     // project the point cloud into 2d projection. make a depth map from it.
     if (rangeMat.at<float>(rowIdn, columnIdn) != FLT_MAX) continue;
 
     rangeMat.at<float>(rowIdn, columnIdn) = range;
 
-    int index = columnIdn + rowIdn * 1800;
+    int index = columnIdn + rowIdn * 2000;
     fullCloud[index] = thisPoint;
   }
 }
@@ -121,16 +121,16 @@ void ImageProjection::cloudExtraction()
   int count = 0;
   // extract segmented cloud for lidar odometry
 
-  for (int i = 0; i < 16; ++i) {
+  for (int i = 0; i < 32; ++i) {
     cloudInfo.start_ring_index[i] = count - 1 + 5;
-    for (int j = 0; j < 1800; ++j) {
+    for (int j = 0; j < 2000; ++j) {
       if (rangeMat.at<float>(i, j) != FLT_MAX) {
         // mark the points' column index for marking occlusion later
         cloudInfo.point_col_index[count] = j;
         // save range info
         cloudInfo.point_range[count] = rangeMat.at<float>(i, j);
         // save extracted cloud
-        extractedCloud.push_back(fullCloud[j + i * 1800]);
+        extractedCloud.push_back(fullCloud[j + i * 2000]);
         // size of extracted cloud
         ++count;
       }
@@ -143,7 +143,7 @@ void ImageProjection::resetParameters()
 {
   extractedCloud.clear();
   // reset range matrix for range image projection
-  rangeMat = cv::Mat(16, 1800, CV_32F, FLT_MAX);
+  rangeMat = cv::Mat(32, 2000, CV_32F, FLT_MAX);
   firstPointFlag = true;
 }
 

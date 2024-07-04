@@ -48,15 +48,15 @@ FeatureExtraction::FeatureExtraction()
 
 void FeatureExtraction::initializationValue()
 {
-  cloudSmoothness.resize(28800);  // 16 * 1800
+  cloudSmoothness.resize(64000);  // 16 * 1800
 
   extractedCloud.clear();
   cornerCloud.clear();
   surfaceCloud.clear();
 
-  cloudCurvature = new float[28800];     // 16 * 1800
-  cloudNeighborPicked = new int[28800];  // 16 * 1800
-  cloudLabel = new int[28800];           // 16 * 1800
+  cloudCurvature = new float[64000];     // 16 * 1800
+  cloudNeighborPicked = new int[64000];  // 16 * 1800
+  cloudLabel = new int[64000];           // 16 * 1800
 }
 
 void FeatureExtraction::laserCloudInfoHandler(
@@ -140,7 +140,7 @@ void FeatureExtraction::extractFeatures(
   Points surfaceCloudScan;
   Points surfaceCloudScanDS;
 
-  for (int i = 0; i < 16; i++) {
+  for (int i = 0; i < 32; i++) {
     surfaceCloudScan.clear();
 
     for (int j = 0; j < 6; j++) {
@@ -149,7 +149,7 @@ void FeatureExtraction::extractFeatures(
       int ep =
         (cloudInfo.start_ring_index[i] * (5 - j) + cloudInfo.end_ring_index[i] * (j + 1)) / 6 - 1;
 
-      if (sp >= ep || ep > 28800) continue;
+      if (sp >= ep || ep > 64000) continue;
 
       std::sort(cloudSmoothness.begin() + sp, cloudSmoothness.begin() + ep, by_value());
 

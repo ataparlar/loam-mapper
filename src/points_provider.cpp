@@ -29,6 +29,7 @@
 #include "loam_mapper/date.h"
 #include "loam_mapper/points_provider.hpp"
 #include "loam_mapper/continuous_packet_parser.hpp"
+#include "loam_mapper/continuous_packet_parser_xt32.hpp"
 
 namespace loam_mapper::points_provider
 {
@@ -69,7 +70,8 @@ void PointsProvider::process_pcaps_into_clouds(
     throw std::range_error("index is outside paths_pcaps_ range.");
   }
 
-  continuous_packet_parser::ContinuousPacketParser packet_parser;
+//  continuous_packet_parser::ContinuousPacketParser packet_parser;
+  continuous_packet_parser::ContinuousPacketParserXt32 packet_parser;
   for (size_t i = index_start; i < index_start + count; ++i) {
     process_pcap_into_clouds(paths_pcaps_.at(i), callback_cloud_surround_out, packet_parser);
   }
@@ -78,7 +80,7 @@ void PointsProvider::process_pcaps_into_clouds(
 void PointsProvider::process_pcap_into_clouds(
   const fs::path & path_pcap,
   const std::function<void(const Points &)> & callback_cloud_surround_out,
-  continuous_packet_parser::ContinuousPacketParser & parser)
+  continuous_packet_parser::ContinuousPacketParserXt32 & parser)
 {
   pcpp::IFileReaderDevice * reader = pcpp::IFileReaderDevice::getReader(path_pcap.string());
   if (reader == nullptr) {
@@ -93,6 +95,7 @@ void PointsProvider::process_pcap_into_clouds(
 
   pcpp::RawPacket rawPacket;
   while (reader->getNextPacket(rawPacket)) {
+//    std::cout << "test_points" << std::endl;
     parser.process_packet_into_cloud(rawPacket, callback_cloud_surround_out);
   }
 

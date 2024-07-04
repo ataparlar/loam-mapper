@@ -20,8 +20,10 @@
 #include "loam_mapper/date.h"
 #include "loam_mapper/utils.hpp"
 
+#include <sensor_msgs/point_cloud2_iterator.hpp>
+
+
 #include <Eigen/Geometry>
-#include <GeographicLib/LocalCartesian.hpp>
 
 #include <algorithm>
 #include <array>
@@ -175,11 +177,22 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       in.z_vel, in.x_angular_rate, in.y_angular_rate, in.z_angular_rate, in.x_acceleration,
       in.y_acceleration, in.z_acceleration, in.x_vel_std, in.y_vel_std, in.z_vel_std, in.roll_std,
       in.pitch_std, in.heading_std)) {
+
+      double x, y, z; int zone; bool northp; int prec=8;
+      GeographicLib::UTMUPS::Forward(in.latitude, in.longitude, zone, northp, x, y);
+      std::string mgrs_string;
+      GeographicLib::MGRS::Forward(zone, northp, x, y, prec, mgrs_string);
+//      std::cout << mgrs_string << std::endl;
+      std::vector coords = parse_mgrs_coordinates(mgrs_string);
+      x = coords.at(0);
+      y = coords.at(1);
+      z = in.ellipsoid_height;
+
       Pose pose;
       Imu imu;
-      pose.pose_with_covariance.pose.position.set__x(in.easting - origin_x);
-      pose.pose_with_covariance.pose.position.set__y(in.northing - origin_y);
-      pose.pose_with_covariance.pose.position.set__z(in.ellipsoid_height - origin_z);
+      pose.pose_with_covariance.pose.position.set__x(x);
+      pose.pose_with_covariance.pose.position.set__y(y);
+      pose.pose_with_covariance.pose.position.set__z(z);
       Eigen::AngleAxisd angle_axis_x(utils::Utils::deg_to_rad(in.roll), Eigen::Vector3d::UnitY());
       Eigen::AngleAxisd angle_axis_y(utils::Utils::deg_to_rad(in.pitch), Eigen::Vector3d::UnitX());
       Eigen::AngleAxisd angle_axis_z(
@@ -203,7 +216,6 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       imu.imu.linear_acceleration.set__x(in.y_acceleration);
       imu.imu.linear_acceleration.set__y(in.x_acceleration);
       imu.imu.linear_acceleration.set__z(-in.z_acceleration);
-//      imu.imu.linear_acceleration_covariance
       std::array<double, 3> linear_acc_variances{
         std::pow(in.x_vel_std, 2),  std::pow(-in.y_vel_std, 2), std::pow(-in.z_vel_std, 2),
       };
@@ -212,7 +224,7 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       }
 
       imu.imu.angular_velocity.set__x(in.y_angular_rate);
-      imu.imu.angular_velocity.set__y(-in.x_angular_rate);
+      imu.imu.angular_velocity.set__y(in.x_angular_rate);
       imu.imu.angular_velocity.set__z(-in.z_angular_rate);
       std::array<double, 3> angular_rate_variances{
         std::pow(in.pitch_std, 2),  std::pow(in.roll_std, 2), std::pow(-in.heading_std, 2),
@@ -226,6 +238,14 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       int days_raw = std::stoi(segments.at(0));
       int months_raw = std::stoi(segments.at(1));
       int years_raw = std::stoi(segments.at(2));
+
+      if (last_utc_time > in.utc_time) {
+        days_raw++;
+        day_changed_flag = true;
+      } else if (day_changed_flag) {
+        days_raw++;
+      }
+      last_utc_time = in.utc_time;
 
       date::year_month_day date_current_ = date::year{years_raw} / months_raw / days_raw;
       date::hh_mm_ss time_since_midnight =
@@ -242,7 +262,7 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       imu.stamp_nanoseconds = pose.stamp_nanoseconds;
 
       std::array<double, 6> variances{
-        std::pow(in.x_vel_std, 2), std::pow(-in.y_vel_std, 2),  std::pow(-in.z_vel_std, 2),
+        std::pow(in.x_vel_std, 2), std::pow(in.y_vel_std, 2),  std::pow(-in.z_vel_std, 2),
         std::pow(in.roll_std, 2),  std::pow(in.pitch_std, 2), std::pow(in.heading_std, 2),
       };
 
@@ -256,6 +276,8 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       for (size_t i = 0; i < 6; ++i) {
         pose.pose_with_covariance.covariance.at(i * 7) = variances.at(i);
       }
+      pose.meridian_convergence = compute_meridian_convergence(in.latitude, in.longitude);
+
       poses_.push_back(pose);
       imu_rotations_.push_back(imu);
     }
@@ -302,5 +324,44 @@ TransformProvider::Imu TransformProvider::get_imu_at(
 //    std::cout << "ind: " << index << std::endl;
   return imu_rotations_.at(index);
 }
+
+std::vector<double> TransformProvider::parse_mgrs_coordinates(const std::string & mgrs_string) {
+  std::string mgrs_grid = mgrs_string.substr(0, 5);
+  std::string mgrs_x_str = mgrs_string.substr(5, 8);
+  std::string mgrs_y_str = mgrs_string.substr(13, 8);
+
+  double mgrs_x = std::stod(mgrs_x_str);
+  mgrs_x /= 1000;
+
+  double mgrs_y = std::stod(mgrs_y_str);
+  mgrs_y /= 1000;
+
+  return std::vector{mgrs_x, mgrs_y};
+}
+
+std::string TransformProvider::parse_mgrs_zone(const std::string & mgrs_string) {
+  return mgrs_string.substr(0, 5);
+}
+
+float TransformProvider::compute_meridian_convergence(double lat, double lon) {
+
+  double x, y;
+  int zone;
+  bool northp;
+
+  GeographicLib::UTMUPS::Forward(lat, lon, zone, northp, x, y);
+  double lambda0 = (zone - 1) * 6 - 180 + 3;
+
+  GeographicLib::TransverseMercatorExact tm(
+    GeographicLib::Constants::WGS84_a(),
+    GeographicLib::Constants::WGS84_f(),
+    lambda0);
+
+  double gamma, k;
+  tm.Forward(lambda0, lat, lon, x, y, gamma, k);
+
+  return gamma;
+}
+
 
 }  // namespace loam_mapper::transform_provider

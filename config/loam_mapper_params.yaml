@@ -1,19 +1,19 @@
 /**:
   ros__parameters:
-    pcap_dir_path: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/pcaps_by_time/
-    pose_txt_path: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/ytu_campus_080423_ground_truth.txt
-    pcd_export_directory: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/output/
+    pcap_dir_path: /home/ataparlar/data/task_spesific/hesai_parser/bosphorus_bridge/pcaps/
+    pose_txt_path: /home/ataparlar/data/task_spesific/hesai_parser/bosphorus_bridge/bosphorus.txt
+    pcd_export_directory: /home/ataparlar/data/task_spesific/hesai_parser/bosphorus_bridge/output/
 
-    project_namespace: ytu_campus
+    project_namespace: bosphorus
 
     map_origin_x: 658761.0
     map_origin_y: 4542599.0
     map_origin_z: 116.250886
 
-    imu2lidar_roll: 179.623
-    imu2lidar_pitch: -0.44
-    imu2lidar_yaw: 0.675
+    imu2lidar_roll: -179.582
+    imu2lidar_pitch: 0.411
+    imu2lidar_yaw: 179.533
 
     enable_ned2enu: true
     voxel_resolution: 0.2
-    save_pcd: true
+    save_pcd: false

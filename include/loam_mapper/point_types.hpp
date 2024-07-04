@@ -41,6 +41,22 @@ struct PointXYZIT
   }
 } __attribute__((packed));
 
+struct PointXYZIR
+{
+  float x{0.0F};
+  float y{0.0F};
+  float z{0.0F};
+  uint32_t intensity{0U};
+  uint32_t ring{0U};
+  friend bool operator==(const PointXYZIR & p1, const PointXYZIR & p2)
+  {
+    using boost::math::epsilon_difference;
+    return epsilon_difference(p1.x, p2.x) == 0.0F && epsilon_difference(p1.y, p2.y) == 0.0F &&
+           epsilon_difference(p1.z, p2.z) == 0.0F && p1.intensity == p2.intensity &&
+           p1.ring == p2.ring;
+  }
+} __attribute__((packed));
+
 struct PointXYZITRH
 {
   float x{0.0F};

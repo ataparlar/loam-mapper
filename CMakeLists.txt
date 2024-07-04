@@ -19,14 +19,17 @@ find_package(pcl_conversions REQUIRED)
 find_package(PCL REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(cv_bridge REQUIRED)
+find_package(GeographicLib REQUIRED)
 
 include_directories(include
         ${PCL_INCLUDE_DIRS}
+        ${GeographicLib_INCLUDE_DIRS}
         ${PcapPlusPlus_INCLUDE_DIRS})
 
 set(LOAM_MAPPER_LIB_SRC
         src/utils.cpp
         src/continuous_packet_parser.cpp
+        src/continuous_packet_parser_xt32.cpp
         src/points_provider.cpp
         src/transform_provider.cpp
         src/image_projection.cpp
@@ -39,6 +42,7 @@ set(LOAM_MAPPER_LIB_HEADERS
         include/loam_mapper/csv.hpp
         include/loam_mapper/Occtree.h
         include/loam_mapper/continuous_packet_parser.hpp
+        include/loam_mapper/continuous_packet_parser_xt32.hpp
         include/loam_mapper/points_provider_base.hpp
         include/loam_mapper/points_provider.hpp
         include/loam_mapper/transform_provider.hpp
@@ -53,6 +57,7 @@ ament_target_dependencies(${PROJECT_NAME} rclcpp PcapPlusPlus PCL pcl_conversion
         sensor_msgs nav_msgs visualization_msgs OpenCV cv_bridge)
 target_link_libraries(${PROJECT_NAME}
         ${PCL_LIBRARIES}
+        ${GeographicLib_LIBRARIES}
         ${PcapPlusPlus_LIBRARIES})
 
 if (BUILD_TESTING)
