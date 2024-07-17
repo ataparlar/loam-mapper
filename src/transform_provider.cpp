@@ -180,13 +180,15 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
 
       double x, y, z; int zone; bool northp; int prec=8;
       GeographicLib::UTMUPS::Forward(in.latitude, in.longitude, zone, northp, x, y);
-      std::string mgrs_string;
-      GeographicLib::MGRS::Forward(zone, northp, x, y, prec, mgrs_string);
-//      std::cout << mgrs_string << std::endl;
-      std::vector coords = parse_mgrs_coordinates(mgrs_string);
-      x = coords.at(0);
-      y = coords.at(1);
-      z = in.ellipsoid_height;
+//      std::string mgrs_string;
+//      GeographicLib::MGRS::Forward(zone, northp, x, y, prec, mgrs_string);
+//      std::vector coords = parse_mgrs_coordinates(mgrs_string);
+//      x = coords.at(0);
+//      y = coords.at(1);
+//      z = in.ellipsoid_height;
+      x = x - origin_x;
+      y = y - origin_y;
+      z = in.ellipsoid_height - origin_z;
 
       Pose pose;
       Imu imu;

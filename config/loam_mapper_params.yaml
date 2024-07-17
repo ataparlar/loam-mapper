@@ -1,14 +1,14 @@
 /**:
   ros__parameters:
-    pcap_dir_path: /home/ataparlar/data/task_spesific/hesai_parser/bosphorus_bridge/pcaps/
-    pose_txt_path: /home/ataparlar/data/task_spesific/hesai_parser/bosphorus_bridge/bosphorus.txt
-    pcd_export_directory: /home/ataparlar/data/task_spesific/hesai_parser/bosphorus_bridge/output/
+    pcap_dir_path: /home/ataparlar/data/task_spesific/hesai_parser/bomonti_1/pcaps/
+    pose_txt_path: /home/ataparlar/data/task_spesific/hesai_parser/bomonti_1/bomonti1.txt
+    pcd_export_directory: /home/ataparlar/data/task_spesific/hesai_parser/bomonti_1/output/
 
-    project_namespace: bosphorus
+    project_namespace: bomonti
 
-    map_origin_x: 658761.0
-    map_origin_y: 4542599.0
-    map_origin_z: 116.250886
+    map_origin_x: 665923.553
+    map_origin_y: 4547027.817
+    map_origin_z: 82.26980721453911
 
     imu2lidar_roll: -179.582
     imu2lidar_pitch: 0.411
