@@ -38,6 +38,9 @@ public:
   double map_origin_y_;
   double map_origin_z_;
 
+  double imu2lidar_x_;
+  double imu2lidar_y_;
+  double imu2lidar_z_;
   double imu2lidar_roll_;
   double imu2lidar_pitch_;
   double imu2lidar_yaw_;
