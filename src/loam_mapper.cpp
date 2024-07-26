@@ -62,28 +62,33 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   pub_ptr_path_ = this->create_publisher<nav_msgs::msg::Path>("vehicle_path", 10);
   pub_ptr_image_ = this->create_publisher<sensor_msgs::msg::Image>("rangeMat", 10);
 
-  transform_provider = std::make_shared<transform_provider::TransformProvider>(
-    "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/"
-    "ytu_campus_080423_ground_truth.txt");
+  transform_provider = std::make_shared<transform_provider::TransformProvider>(pose_txt_path_);
 
   transform_provider->process(map_origin_x_, map_origin_y_, map_origin_z_);
 
-  points_provider = std::make_shared<points_provider::PointsProvider>(std::string(
-    "/home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/pcaps/"));
+  points_provider = std::make_shared<points_provider::PointsProvider>(pcap_dir_path_);
   points_provider->process();
 
   image_projection = std::make_shared<image_projection::ImageProjection>();
   feature_extraction = std::make_shared<feature_extraction::FeatureExtraction>();
 
-  std::function<void(const Points &)> callback =
-    std::bind(&LoamMapper::callback_cloud_surround_out, this, std::placeholders::_1);
-  points_provider->process_pcaps_into_clouds(callback, 0, 3);
-  std::cout << "process_pcaps_into_clouds done" << std::endl;
+  for (int i = 0; i < points_provider->paths_pcaps_.size(); i++) {
+    std::function<void(const Points &)> callback =
+      std::bind(&LoamMapper::callback_cloud_surround_out, this, std::placeholders::_1);
+    points_provider->process_pcaps_into_clouds(callback, i, 1);
+    RCLCPP_INFO(
+      this->get_logger(), "PCAP number %s is converted to clouds.", std::to_string(i).c_str());
+    process(i);
+    clouds.clear();
+    RCLCPP_INFO(this->get_logger(), "-----------------------------------------------");
+  }
+  RCLCPP_INFO(this->get_logger(), "All PCAP files are converted into .pcd point clouds.");
+  RCLCPP_INFO(this->get_logger(), "Destination:  %s", pcd_export_dir_.c_str());
 
-  process();
+  rclcpp::shutdown();
 }
 
-void LoamMapper::process()
+void LoamMapper::process(int file_counter)
 {
   auto thing_to_cloud =
     [](const points_provider::PointsProvider::Points & points_bad, const std::string & frame_id) {
@@ -119,12 +124,38 @@ void LoamMapper::process()
   points_provider::PointsProvider::Points cloud_all_surface_;
 
   for (auto & cloud : clouds) {
+    Points filtered_points;
+    //    filtered_points.resize(cloud.size());
+
+    auto last_pose = transform_provider->poses_.back();
+    auto last_imu = transform_provider->imu_rotations_.back();
+    std::copy_if(
+      cloud.cbegin(), cloud.cend(), std::back_inserter(filtered_points),
+      [&last_pose, &last_imu](const points_provider::PointsProvider::Point & point) {
+        return !(
+          (point.stamp_unix_seconds > last_imu.stamp_unix_seconds ||
+           (point.stamp_unix_seconds == last_imu.stamp_unix_seconds &&
+            point.stamp_nanoseconds > last_imu.stamp_nanoseconds)) &&
+          (point.stamp_unix_seconds > last_pose.stamp_unix_seconds ||
+           (point.stamp_unix_seconds == last_pose.stamp_unix_seconds &&
+            point.stamp_nanoseconds > last_pose.stamp_nanoseconds)));
+      });
+
     Points cloud_trans_undistorted;
-    cloud_trans_undistorted.resize(cloud.size());
+    cloud_trans_undistorted.resize(filtered_points.size());
+
     bool first_point_flag = true;
     std::transform(
-      std::execution::par, cloud.cbegin(), cloud.cend(), cloud_trans_undistorted.begin(),
+      std::execution::par, filtered_points.cbegin(), filtered_points.cend(),
+      cloud_trans_undistorted.begin(),
       [this, &first_point_flag](const points_provider::PointsProvider::Point & point) {
+        if (
+          (point.stamp_unix_seconds > transform_provider->poses_.back().stamp_unix_seconds) ||
+          (point.stamp_unix_seconds == transform_provider->poses_.back().stamp_unix_seconds &&
+           point.stamp_nanoseconds > transform_provider->poses_.back().stamp_nanoseconds)){
+          return last_point;
+        }
+
         auto imu_ =
           transform_provider->get_imu_at(point.stamp_unix_seconds, point.stamp_nanoseconds);
         auto pose_ =
@@ -168,14 +199,14 @@ void LoamMapper::process()
           }
 
           double new_x = (cosTheta + (1 - cosTheta) * omega_x * omega_x) * point.x +
-                        ((1 - cosTheta) * omega_x * omega_y - omega_z * sinTheta) * point.y +
-                        ((1 - cosTheta) * omega_x * omega_z + omega_y * sinTheta) * point.z;
+                         ((1 - cosTheta) * omega_x * omega_y - omega_z * sinTheta) * point.y +
+                         ((1 - cosTheta) * omega_x * omega_z + omega_y * sinTheta) * point.z;
           double new_y = ((1 - cosTheta) * omega_y * omega_x + omega_z * sinTheta) * point.x +
-                        (cosTheta + (1 - cosTheta) * omega_y * omega_y) * point.y +
-                        ((1 - cosTheta) * omega_y * omega_z - omega_x * sinTheta) * point.z;
+                         (cosTheta + (1 - cosTheta) * omega_y * omega_y) * point.y +
+                         ((1 - cosTheta) * omega_y * omega_z - omega_x * sinTheta) * point.z;
           double new_z = ((1 - cosTheta) * omega_z * omega_x - omega_y * sinTheta) * point.x +
-                        ((1 - cosTheta) * omega_z * omega_y + omega_x * sinTheta) * point.y +
-                        (cosTheta + (1 - cosTheta) * omega_z * omega_z) * point.z;
+                         ((1 - cosTheta) * omega_z * omega_y + omega_x * sinTheta) * point.y +
+                         (cosTheta + (1 - cosTheta) * omega_z * omega_z) * point.z;
 
           Point new_point;
           new_point.x = new_x;
@@ -194,6 +225,8 @@ void LoamMapper::process()
           new_point.stamp_nanoseconds = point.stamp_nanoseconds;
           new_point.horizontal_angle = point.horizontal_angle;
           new_point.ring = point.ring;
+
+          last_point = new_point;
 
           return new_point;
         }
@@ -226,7 +259,7 @@ void LoamMapper::process()
     cloud_all_surface_.insert(
       cloud_all_surface_.end(), cloud_surface_trans.begin(), cloud_surface_trans.end());
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    //    std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
 
   if (save_pcd_) {
@@ -258,10 +291,16 @@ void LoamMapper::process()
     for (auto & point : *occ_cloud_surface.cloud) {
       surface_cloud_pcl.push_back(point);
     }
-    pcl::io::savePCDFileASCII(pcd_export_dir_ + "ytu_campus.pcd", new_cloud);
-    pcl::io::savePCDFileASCII(pcd_export_dir_ + "ytu_campus_corner.pcd", corner_cloud_pcl);
-    pcl::io::savePCDFileASCII(pcd_export_dir_ + "ytu_campus_surface.pcd", surface_cloud_pcl);
-    std::cout << "PCDs saved." << std::endl;
+    pcl::io::savePCDFileASCII(
+      pcd_export_dir_ + "ytu_campus_" + std::to_string(file_counter) + ".pcd", new_cloud);
+    pcl::io::savePCDFileASCII(
+      pcd_export_dir_ + "ytu_campus_corner_" + std::to_string(file_counter) + ".pcd",
+      corner_cloud_pcl);
+    pcl::io::savePCDFileASCII(
+      pcd_export_dir_ + "ytu_campus_surface_" + std::to_string(file_counter) + ".pcd",
+      surface_cloud_pcl);
+    RCLCPP_INFO(
+      this->get_logger(), "PCDs saved for PCAP number: %s.", std::to_string(file_counter).c_str());
   }
 
   std::cout << "LoamMapper is done." << std::endl;
@@ -298,13 +337,35 @@ void LoamMapper::clear_cloudInfo(utils::Utils::CloudInfo & cloudInfo)
 
 LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud)
 {
+  Points filtered_points;
+  //  filtered_points.resize(cloud.size());
+
+  auto last_pose = transform_provider->poses_.back();
+  std::copy_if(
+    cloud.cbegin(), cloud.cend(), std::back_inserter(filtered_points),
+    [&last_pose](const points_provider::PointsProvider::Point & point) {
+      return !(
+        point.stamp_unix_seconds > last_pose.stamp_unix_seconds ||
+        (point.stamp_unix_seconds == last_pose.stamp_unix_seconds &&
+         point.stamp_nanoseconds > last_pose.stamp_nanoseconds));
+    });
+
   Points cloud_trans;
-  cloud_trans.resize(cloud.size());
+  cloud_trans.resize(filtered_points.size());
 
   std::transform(
-    std::execution::par, cloud.cbegin(), cloud.cend(), cloud_trans.begin(),
+    std::execution::par, filtered_points.cbegin(), filtered_points.cend(), cloud_trans.begin(),
     [this](const points_provider::PointsProvider::Point & point) {
       points_provider::PointsProvider::Point point_trans;
+
+      if (
+        (point.stamp_unix_seconds > transform_provider->poses_.back().stamp_unix_seconds) ||
+        (point.stamp_unix_seconds == transform_provider->poses_.back().stamp_unix_seconds &&
+         point.stamp_nanoseconds > transform_provider->poses_.back().stamp_nanoseconds)){
+        return last_point;
+      }
+
+
       loam_mapper::transform_provider::TransformProvider::Pose pose =
         this->transform_provider->get_pose_at(point.stamp_unix_seconds, point.stamp_nanoseconds);
 
@@ -319,7 +380,9 @@ LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud)
 
       Eigen::Affine3d affine_imu2lidar(Eigen::Affine3d::Identity());
       affine_imu2lidar.matrix().topLeftCorner<3, 3>() =
-        Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_yaw_), Eigen::Vector3d::UnitZ())
+        Eigen::AngleAxisd(
+          utils::Utils::deg_to_rad(-(imu2lidar_yaw_ - pose.meridian_convergence)),
+          Eigen::Vector3d::UnitZ())
           .toRotationMatrix() *
         Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_pitch_), Eigen::Vector3d::UnitY())
           .toRotationMatrix() *
@@ -354,6 +417,8 @@ LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud)
       point_trans.intensity = point.intensity;
       point_trans.stamp_unix_seconds = point.stamp_unix_seconds;
       point_trans.stamp_nanoseconds = point.stamp_nanoseconds;
+
+      last_point = point_trans;
 
       return point_trans;
     });

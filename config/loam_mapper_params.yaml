@@ -1,8 +1,8 @@
 /**:
   ros__parameters:
-    pcap_dir_path: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/pcaps/
-    pose_txt_path: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/ytu_campus_080423_ground_truth.txt
-    pcd_export_directory: /home/ataparlar/data/task_spesific/loam_based_localization/mapping/pcap_and_poses/output/
+    pcap_dir_path: /home/ataparlar/data/task_specific/loam_mapping/applanix_vlp16/pcaps/
+    pose_txt_path: /home/ataparlar/data/task_specific/loam_mapping/applanix_vlp16/ytu_campus_080423_ground_truth.txt
+    pcd_export_directory: /home/ataparlar/data/task_specific/loam_mapping/applanix_vlp16/output/
 
     map_origin_x: 658761.0
     map_origin_y: 4542599.0

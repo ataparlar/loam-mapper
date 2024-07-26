@@ -161,9 +161,19 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       in.pitch_std, in.heading_std)) {
       Pose pose;
       Imu imu;
-      pose.pose_with_covariance.pose.position.set__x(in.easting - origin_x);
-      pose.pose_with_covariance.pose.position.set__y(in.northing - origin_y);
-      pose.pose_with_covariance.pose.position.set__z(in.ellipsoid_height - origin_z);
+//      pose.pose_with_covariance.pose.position.set__x(in.easting - origin_x);
+//      pose.pose_with_covariance.pose.position.set__y(in.northing - origin_y);
+//      pose.pose_with_covariance.pose.position.set__z(in.ellipsoid_height - origin_z);
+      double x, y, z; int zone; bool northp; int prec=8;
+      GeographicLib::UTMUPS::Forward(in.latitude, in.longitude, zone, northp, x, y);
+      std::string mgrs_string;
+      GeographicLib::MGRS::Forward(zone, northp, x, y, prec, mgrs_string);
+      //      std::cout << mgrs_string << std::endl;
+      std::vector coords = parse_mgrs_coordinates(mgrs_string);
+      pose.pose_with_covariance.pose.position.set__x(coords.at(0));
+      pose.pose_with_covariance.pose.position.set__y(coords.at(1));
+      pose.pose_with_covariance.pose.position.set__z(in.ellipsoid_height);
+
       Eigen::AngleAxisd angle_axis_x(utils::Utils::deg_to_rad(in.roll), Eigen::Vector3d::UnitY());
       Eigen::AngleAxisd angle_axis_y(utils::Utils::deg_to_rad(in.pitch), Eigen::Vector3d::UnitX());
       Eigen::AngleAxisd angle_axis_z(
@@ -229,6 +239,7 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
         std::pow(in.x_vel_std, 2), std::pow(-in.y_vel_std, 2),  std::pow(-in.z_vel_std, 2),
         std::pow(in.roll_std, 2),  std::pow(in.pitch_std, 2), std::pow(in.heading_std, 2),
       };
+      pose.meridian_convergence = compute_meridian_convergence(in.latitude, in.longitude);
 
       //  0  1  2  3  4  5
       //  6  7  8  9  10 11
@@ -262,7 +273,23 @@ TransformProvider::Pose TransformProvider::get_pose_at(
       return p1.stamp_unix_seconds < p2.stamp_unix_seconds;
     });
 
-  size_t index = std::distance(poses_.begin(), iter_result);
+  size_t index;
+
+  if (
+        iter_result == poses_.end() ||
+    iter_result->stamp_unix_seconds > stamp_unix_seconds + 1 ||
+    iter_result->stamp_nanoseconds > stamp_nanoseconds + 50000000) {
+//    std::cerr << "Pose not found for timestamp: "
+//              << stamp_unix_seconds << "." << stamp_nanoseconds << std::endl;
+    // Handle the error as needed, e.g., throw an exception, return a default pose, etc.
+    index = last_index_imu;
+//    throw std::runtime_error("Pose not found");
+  } else {
+    index = std::distance(poses_.begin(), iter_result);
+    last_index_pose = index;
+  }
+
+
   //  std::cout << "ind: " << index << std::endl;
   return poses_.at(index);
 }
@@ -282,9 +309,63 @@ TransformProvider::Imu TransformProvider::get_imu_at(
       return p1.stamp_unix_seconds < p2.stamp_unix_seconds;
     });
 
-  size_t index = std::distance(imu_rotations_.begin(), iter_result);
+  size_t index;
+
+  if (
+        iter_result == imu_rotations_.end() ||
+    iter_result->stamp_unix_seconds > stamp_unix_seconds + 1 ||
+    iter_result->stamp_nanoseconds > stamp_nanoseconds + 50000000) {
+//    std::cerr << "Imu not found for timestamp: "
+//              << stamp_unix_seconds << "." << stamp_nanoseconds << std::endl;
+    // Handle the error as needed, e.g., throw an exception, return a default pose, etc.
+//    throw std::runtime_error("Imu not found");
+    index = last_index_imu;
+  } else {
+    index = std::distance(imu_rotations_.begin(), iter_result);
+    last_index_imu = index;
+  }
+
+
   //  std::cout << "ind: " << index << std::endl;
   return imu_rotations_.at(index);
+}
+
+std::vector<double> TransformProvider::parse_mgrs_coordinates(const std::string & mgrs_string) {
+  std::string mgrs_grid = mgrs_string.substr(0, 5);
+  std::string mgrs_x_str = mgrs_string.substr(5, 8);
+  std::string mgrs_y_str = mgrs_string.substr(13, 8);
+
+  double mgrs_x = std::stod(mgrs_x_str);
+  mgrs_x /= 1000;
+
+  double mgrs_y = std::stod(mgrs_y_str);
+  mgrs_y /= 1000;
+
+  return std::vector{mgrs_x, mgrs_y};
+}
+
+std::string TransformProvider::parse_mgrs_zone(const std::string & mgrs_string) {
+  return mgrs_string.substr(0, 5);
+}
+
+float TransformProvider::compute_meridian_convergence(double lat, double lon) {
+
+  double x, y;
+  int zone;
+  bool northp;
+
+  GeographicLib::UTMUPS::Forward(lat, lon, zone, northp, x, y);
+  double lambda0 = (zone - 1) * 6 - 180 + 3;
+
+  GeographicLib::TransverseMercatorExact tm(
+    GeographicLib::Constants::WGS84_a(),
+    GeographicLib::Constants::WGS84_f(),
+    lambda0);
+
+  double gamma, k;
+  tm.Forward(lambda0, lat, lon, x, y, gamma, k);
+
+  return gamma;
 }
 
 }  // namespace loam_mapper::transform_provider

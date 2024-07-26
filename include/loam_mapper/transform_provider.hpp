@@ -8,6 +8,12 @@
 #include <geometry_msgs/msg/pose_with_covariance.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 
+
+#include <GeographicLib/UTMUPS.hpp>
+#include <GeographicLib/MGRS.hpp>
+#include <GeographicLib/TransverseMercatorExact.hpp>
+
+
 #include <boost/filesystem.hpp>
 
 #include <memory>
@@ -38,6 +44,7 @@ public:
     uint32_t stamp_nanoseconds{0U};
     Velocity velocity;
     geometry_msgs::msg::PoseWithCovariance pose_with_covariance;
+    float meridian_convergence;
   };
   struct Imu
   {
@@ -53,12 +60,19 @@ public:
 
   Imu get_imu_at(uint32_t stamp_unix_seconds, uint32_t stamp_nanoseconds);
 
+  std::vector<double> parse_mgrs_coordinates(const std::string & mgrs_string);
+  std::string parse_mgrs_zone(const std::string & mgrs_string);
+  float compute_meridian_convergence(double lat, double lon);
+
+
 private:
   fs::path path_file_ascii_output_;
   std::string header_line_string;
   std::string time_string;
   int data_line_number;
   std::string mission_date;
+  int last_index_imu;
+  int last_index_pose;
 };
 }  // namespace loam_mapper::transform_provider
 

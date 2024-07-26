@@ -44,7 +44,7 @@ public:
   double voxel_resolution_;
   bool save_pcd_;
 
-  void process();
+  void process(int file_counter);
 
   std::vector<points_provider::PointsProvider::Points> clouds;
 
@@ -66,6 +66,8 @@ private:
   void clear_cloudInfo(utils::Utils::CloudInfo & cloudInfo);
   Points transform_points(Points & cloud);
   sensor_msgs::msg::Image prepareVisImage(cv::Mat & rangeMat);
+
+  Point last_point;
 
 };
 

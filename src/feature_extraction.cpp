@@ -120,6 +120,10 @@ void FeatureExtraction::extractFeatures(
 
       if (sp >= ep) continue;
 
+      if (sp >= cloudSmoothness.size() || ep > cloudSmoothness.size() || sp > ep) {
+        std::cerr << "Invalid range: sp=" << sp << ", ep=" << ep << std::endl;
+        continue;
+      }
       std::sort(cloudSmoothness.begin() + sp, cloudSmoothness.begin() + ep, by_value());
 
       int largestPickedNum = 0;
