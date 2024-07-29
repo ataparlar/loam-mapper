@@ -69,6 +69,8 @@ private:
   Points transform_points(Points & cloud);
   sensor_msgs::msg::Image prepareVisImage(cv::Mat & rangeMat);
 
+  Point last_point;
+
 };
 
 }  // namespace loam_mapper

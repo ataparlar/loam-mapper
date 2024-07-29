@@ -163,6 +163,13 @@ void LoamMapper::process(int file_counter)
     std::transform(
       std::execution::par, filtered_points.cbegin(), filtered_points.cend(), cloud_trans_undistorted.begin(),
       [this, &first_point_flag](const points_provider::PointsProvider::Point & point) {
+        if (
+          (point.stamp_unix_seconds > transform_provider->poses_.back().stamp_unix_seconds) ||
+          (point.stamp_unix_seconds == transform_provider->poses_.back().stamp_unix_seconds &&
+           point.stamp_nanoseconds > transform_provider->poses_.back().stamp_nanoseconds)){
+          return last_point;
+        }
+
         auto imu_ =
           transform_provider->get_imu_at(point.stamp_unix_seconds, point.stamp_nanoseconds);
         auto pose_ =
@@ -232,6 +239,8 @@ void LoamMapper::process(int file_counter)
           new_point.stamp_nanoseconds = point.stamp_nanoseconds;
           new_point.horizontal_angle = point.horizontal_angle;
           new_point.ring = point.ring;
+
+          last_point = new_point;
 
           return new_point;
         }
@@ -376,6 +385,13 @@ LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud)
   std::transform(
     std::execution::par, filtered_points.cbegin(), filtered_points.cend(), cloud_trans.begin(),
     [this](const points_provider::PointsProvider::Point & point) {
+      if (
+        (point.stamp_unix_seconds > transform_provider->poses_.back().stamp_unix_seconds) ||
+        (point.stamp_unix_seconds == transform_provider->poses_.back().stamp_unix_seconds &&
+         point.stamp_nanoseconds > transform_provider->poses_.back().stamp_nanoseconds)){
+        return last_point;
+      }
+
       points_provider::PointsProvider::Point point_trans;
 
       loam_mapper::transform_provider::TransformProvider::Pose pose =
@@ -428,6 +444,8 @@ LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud)
       point_trans.intensity = point.intensity;
       point_trans.stamp_unix_seconds = point.stamp_unix_seconds;
       point_trans.stamp_nanoseconds = point.stamp_nanoseconds;
+
+      last_point = point_trans;
 
       return point_trans;
     });

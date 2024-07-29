@@ -1,14 +1,14 @@
 /**:
   ros__parameters:
-    pcap_dir_path: /home/ataparlar/data/task_spesific/hesai_parser/bosphorus_bridge/pcaps/
-    pose_txt_path: /home/ataparlar/data/task_spesific/hesai_parser/bosphorus_bridge/bosphorus.txt
-    pcd_export_directory: /home/ataparlar/data/task_spesific/hesai_parser/bosphorus_bridge/output/
+    pcap_dir_path: /home/ataparlar/data/task_specific/loam_mapping/applanix_xt32/bosphorus/pcaps/
+    pose_txt_path: /home/ataparlar/data/task_specific/loam_mapping/applanix_xt32/bosphorus/2024_05_22-03_21_16-gen-route2-map-4_eurasia_out_bomonti_ent.txt
+    pcd_export_directory: /home/ataparlar/data/task_specific/loam_mapping/applanix_xt32/bosphorus/output/
 
     project_namespace: bosphorus
 
-    map_origin_x: 658761.0
-    map_origin_y: 4542599.0
-    map_origin_z: 116.250886
+    map_origin_x: 671664.165
+    map_origin_y: 4541046.637
+    map_origin_z: 86.363
 
     imu2lidar_roll: -179.582
     imu2lidar_pitch: 0.411
@@ -16,4 +16,4 @@
 
     enable_ned2enu: true
     voxel_resolution: 0.2
-    save_pcd: false
+    save_pcd: true

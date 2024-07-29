@@ -149,7 +149,10 @@ void FeatureExtraction::extractFeatures(
       int ep =
         (cloudInfo.start_ring_index[i] * (5 - j) + cloudInfo.end_ring_index[i] * (j + 1)) / 6 - 1;
 
-      if (sp >= ep || ep > 64000) continue;
+      if (sp >= cloudSmoothness.size() || ep > cloudSmoothness.size() || sp > ep) {
+        std::cerr << "Invalid range: sp=" << sp << ", ep=" << ep << std::endl;
+        continue;
+      }
 
       std::sort(cloudSmoothness.begin() + sp, cloudSmoothness.begin() + ep, by_value());
 

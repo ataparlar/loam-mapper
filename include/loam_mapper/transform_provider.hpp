@@ -74,6 +74,9 @@ private:
   bool day_changed_flag = false;
 
   float compute_meridian_convergence(double lat, double lon);
+
+  int last_index_imu;
+  int last_index_pose;
 };
 }  // namespace loam_mapper::transform_provider
 

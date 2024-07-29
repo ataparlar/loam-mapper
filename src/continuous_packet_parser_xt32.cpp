@@ -114,16 +114,36 @@ void ContinuousPacketParserXt32::process_packet_into_cloud(
                                 data_packet_with_header->tail.second * 1000000 +
                                 data_packet_with_header->tail.timestamp;
 
-      auto hesai_model =
-        map_byte_to_hesai_model_.at(data_packet_with_header->pre_header.protocol_version_major);
+      HesaiModel hesai_model;
+      auto it = map_byte_to_hesai_model_.find(data_packet_with_header->pre_header.protocol_version_major);
+      if (it == map_byte_to_hesai_model_.end()) {
+        // Key not found, break the loop
+        break;
+      } else {
+        hesai_model = it->second;
+        // Proceed with your logic using hesai_model
+      }
+
+//      auto hesai_model =
+//        map_byte_to_hesai_model_.at(data_packet_with_header->pre_header.protocol_version_major);
       if (hesai_model != HesaiModel::PandarXT) {
         throw std::runtime_error(
           "hesai_model was expected to be: " + map_hesai_model_to_string_.at(HesaiModel::PandarXT) +
           " but it was: " + map_hesai_model_to_string_.at(hesai_model));
       }
 
-      auto return_mode =  // dual
-        map_byte_to_return_mode_.at(data_packet_with_header->tail.return_mode);
+
+      ReturnMode return_mode;
+      auto it2 = map_byte_to_return_mode_.find(data_packet_with_header->tail.return_mode);
+      if (it2 == map_byte_to_return_mode_.end()) {
+        // Key not found, break the loop
+        break;
+      } else {
+        return_mode = it2->second;
+        // Proceed with your logic using hesai_model
+      }
+//      return_mode =  // dual
+//        map_byte_to_return_mode_.at(data_packet_with_header->tail.return_mode);
 
       // I can only process Single Return Modes for now
       //      if (return_mode != ReturnMode::Strongest && return_mode != ReturnMode::LastReturn) {
@@ -256,7 +276,7 @@ void ContinuousPacketParserXt32::process_packet_into_cloud(
             }
           }
         }
-      } else if (return_mode == ReturnMode::LastReturn) {
+      } else if (return_mode == ReturnMode::LastReturn || return_mode == ReturnMode::Strongest) {
         for (size_t ind_block = 0; ind_block < data_packet_with_header->get_size_data_blocks();
              ind_block++) {
           const auto & data_block = data_packet_with_header->data_blocks[ind_block];

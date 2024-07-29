@@ -183,10 +183,14 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       std::string mgrs_string;
       GeographicLib::MGRS::Forward(zone, northp, x, y, prec, mgrs_string);
 //      std::cout << mgrs_string << std::endl;
-      std::vector coords = parse_mgrs_coordinates(mgrs_string);
-      x = coords.at(0);
-      y = coords.at(1);
-      z = in.ellipsoid_height;
+//      std::vector coords = parse_mgrs_coordinates(mgrs_string);
+//      x = coords.at(0);
+//      y = coords.at(1);
+//      z = in.ellipsoid_height;
+
+      x = in.easting - origin_x;
+      y = in.northing - origin_y;
+      z = in.ellipsoid_height - origin_z;
 
       Pose pose;
       Imu imu;
@@ -300,8 +304,24 @@ TransformProvider::Pose TransformProvider::get_pose_at(
       return p1.stamp_unix_seconds < p2.stamp_unix_seconds;
     });
 
-  size_t index = std::distance(poses_.begin(), iter_result);
-//    std::cout << "ind: " << index << std::endl;
+  size_t index;
+
+  if (
+    iter_result == poses_.end() ||
+    iter_result->stamp_unix_seconds > stamp_unix_seconds + 1 ||
+    iter_result->stamp_nanoseconds > stamp_nanoseconds + 50000000) {
+    //    std::cerr << "Pose not found for timestamp: "
+    //              << stamp_unix_seconds << "." << stamp_nanoseconds << std::endl;
+    // Handle the error as needed, e.g., throw an exception, return a default pose, etc.
+    index = last_index_imu;
+    //    throw std::runtime_error("Pose not found");
+  } else {
+    index = std::distance(poses_.begin(), iter_result);
+    last_index_pose = index;
+  }
+
+
+  //  std::cout << "ind: " << index << std::endl;
   return poses_.at(index);
 }
 
@@ -320,11 +340,26 @@ TransformProvider::Imu TransformProvider::get_imu_at(
       return p1.stamp_unix_seconds < p2.stamp_unix_seconds;
     });
 
-  size_t index = std::distance(imu_rotations_.begin(), iter_result);
-//    std::cout << "ind: " << index << std::endl;
+  size_t index;
+
+  if (
+    iter_result == imu_rotations_.end() ||
+    iter_result->stamp_unix_seconds > stamp_unix_seconds + 1 ||
+    iter_result->stamp_nanoseconds > stamp_nanoseconds + 50000000) {
+    //    std::cerr << "Imu not found for timestamp: "
+    //              << stamp_unix_seconds << "." << stamp_nanoseconds << std::endl;
+    // Handle the error as needed, e.g., throw an exception, return a default pose, etc.
+    //    throw std::runtime_error("Imu not found");
+    index = last_index_imu;
+  } else {
+    index = std::distance(imu_rotations_.begin(), iter_result);
+    last_index_imu = index;
+  }
+
+
+  //  std::cout << "ind: " << index << std::endl;
   return imu_rotations_.at(index);
 }
-
 std::vector<double> TransformProvider::parse_mgrs_coordinates(const std::string & mgrs_string) {
   std::string mgrs_grid = mgrs_string.substr(0, 5);
   std::string mgrs_x_str = mgrs_string.substr(5, 8);
