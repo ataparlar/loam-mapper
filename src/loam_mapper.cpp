@@ -1,17 +1,17 @@
 /*
-* Copyright 2024 LeoDrive.ai, Inc. All rights reserved.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
+ * Copyright 2024 LeoDrive.ai, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #include "loam_mapper/loam_mapper.hpp"
@@ -49,6 +49,8 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   this->declare_parameter("pose_txt_path", "");
   this->declare_parameter("pcd_export_directory", "");
   this->declare_parameter("project_namespace", "");
+  this->declare_parameter("time_start_in_utc", 0.0);
+  this->declare_parameter("time_end_in_utc", 0.0);
   this->declare_parameter("map_origin_x", 0.0);
   this->declare_parameter("map_origin_y", 0.0);
   this->declare_parameter("map_origin_z", 0.0);
@@ -63,6 +65,8 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
   pose_txt_path_ = this->get_parameter("pose_txt_path").as_string();
   pcd_export_dir_ = this->get_parameter("pcd_export_directory").as_string();
   project_namespace_ = this->get_parameter("project_namespace").as_string();
+  time_start_in_utc_ = this->get_parameter("time_start_in_utc").as_double();
+  time_end_in_utc_ = this->get_parameter("time_end_in_utc").as_double();
   map_origin_x_ = this->get_parameter("map_origin_x").as_double();
   map_origin_y_ = this->get_parameter("map_origin_y").as_double();
   map_origin_z_ = this->get_parameter("map_origin_z").as_double();
@@ -83,7 +87,8 @@ LoamMapper::LoamMapper() : Node("loam_mapper")
 
   transform_provider->process(map_origin_x_, map_origin_y_, map_origin_z_);
 
-  points_provider = std::make_shared<points_provider::PointsProvider>(std::string(pcap_dir_path_));
+  points_provider = std::make_shared<points_provider::PointsProvider>(std::string(pcap_dir_path_),
+                                                                      time_start_in_utc_, time_end_in_utc_);
   points_provider->process();
 
   image_projection = std::make_shared<image_projection::ImageProjection>();
@@ -142,7 +147,7 @@ void LoamMapper::process(int file_counter)
 
   for (auto & cloud : clouds) {
     Points filtered_points;
-//    filtered_points.resize(cloud.size());
+    //    filtered_points.resize(cloud.size());
 
     auto last_pose = transform_provider->poses_.back();
     std::copy_if(
@@ -154,19 +159,18 @@ void LoamMapper::process(int file_counter)
            point.stamp_nanoseconds > last_pose.stamp_nanoseconds));
       });
 
-
     Points cloud_trans_undistorted;
     cloud_trans_undistorted.resize(filtered_points.size());
 
-
     bool first_point_flag = true;
     std::transform(
-      std::execution::par, filtered_points.cbegin(), filtered_points.cend(), cloud_trans_undistorted.begin(),
+      std::execution::par, filtered_points.cbegin(), filtered_points.cend(),
+      cloud_trans_undistorted.begin(),
       [this, &first_point_flag](const points_provider::PointsProvider::Point & point) {
         if (
           (point.stamp_unix_seconds > transform_provider->poses_.back().stamp_unix_seconds) ||
           (point.stamp_unix_seconds == transform_provider->poses_.back().stamp_unix_seconds &&
-           point.stamp_nanoseconds > transform_provider->poses_.back().stamp_nanoseconds)){
+           point.stamp_nanoseconds > transform_provider->poses_.back().stamp_nanoseconds)) {
           return last_point;
         }
 
@@ -260,15 +264,13 @@ void LoamMapper::process(int file_counter)
     pub_ptr_image_->publish(hsv_image);
     cloud_all.insert(cloud_all.end(), cloud_trans.begin(), cloud_trans.end());
 
-    Points cloud_corner_trans =
-      transform_points(feature_extraction->cornerCloud);
+    Points cloud_corner_trans = transform_points(feature_extraction->cornerCloud);
     auto corner_cloud_ptr_current = thing_to_cloud(cloud_corner_trans, "map");
     pub_ptr_corner_cloud_current_->publish(*corner_cloud_ptr_current);
     cloud_all_corner_.insert(
       cloud_all_corner_.end(), cloud_corner_trans.begin(), cloud_corner_trans.end());
 
-    Points cloud_surface_trans =
-      transform_points(feature_extraction->surfaceCloud);
+    Points cloud_surface_trans = transform_points(feature_extraction->surfaceCloud);
     auto surface_cloud_ptr_current = thing_to_cloud(cloud_surface_trans, "map");
     pub_ptr_surface_cloud_current_->publish(*surface_cloud_ptr_current);
     cloud_all_surface_.insert(
@@ -367,7 +369,7 @@ void LoamMapper::clear_cloudInfo(utils::Utils::CloudInfo & cloudInfo)
 LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud)
 {
   Points filtered_points;
-//  filtered_points.resize(cloud.size());
+  //  filtered_points.resize(cloud.size());
 
   auto last_pose = transform_provider->poses_.back();
   std::copy_if(
@@ -388,7 +390,7 @@ LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud)
       if (
         (point.stamp_unix_seconds > transform_provider->poses_.back().stamp_unix_seconds) ||
         (point.stamp_unix_seconds == transform_provider->poses_.back().stamp_unix_seconds &&
-         point.stamp_nanoseconds > transform_provider->poses_.back().stamp_nanoseconds)){
+         point.stamp_nanoseconds > transform_provider->poses_.back().stamp_nanoseconds)) {
         return last_point;
       }
 
@@ -409,7 +411,8 @@ LoamMapper::Points LoamMapper::transform_points(LoamMapper::Points & cloud)
       Eigen::Affine3d affine_imu2lidar(Eigen::Affine3d::Identity());
       affine_imu2lidar.matrix().topLeftCorner<3, 3>() =
         Eigen::AngleAxisd(
-          utils::Utils::deg_to_rad(-(imu2lidar_yaw_ - pose.meridian_convergence)), Eigen::Vector3d::UnitZ())
+          utils::Utils::deg_to_rad(-(imu2lidar_yaw_ - pose.meridian_convergence)),
+          Eigen::Vector3d::UnitZ())
           .toRotationMatrix() *
         Eigen::AngleAxisd(utils::Utils::deg_to_rad(imu2lidar_pitch_), Eigen::Vector3d::UnitY())
           .toRotationMatrix() *

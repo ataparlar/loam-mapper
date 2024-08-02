@@ -34,6 +34,9 @@ public:
 
   std::string project_namespace_;
 
+  double time_start_in_utc_;
+  double time_end_in_utc_;
+
   double map_origin_x_;
   double map_origin_y_;
   double map_origin_z_;

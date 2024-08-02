@@ -49,7 +49,8 @@ ContinuousPacketParserXt32::ContinuousPacketParserXt32()
 
 void ContinuousPacketParserXt32::process_packet_into_cloud(
   const pcpp::RawPacket & rawPacket,
-  const std::function<void(const Points &)> & callback_cloud_surround_out)
+  const std::function<void(const Points &)> & callback_cloud_surround_out,
+  double time_start_in_utc, double time_end_in_utc)
 {
   switch (rawPacket.getFrameLength()) {
     case 554: {
@@ -376,16 +377,27 @@ void ContinuousPacketParserXt32::process_packet_into_cloud(
                 .count();
             point.stamp_nanoseconds =
               std::chrono::nanoseconds(microseconds_since_toh.subseconds()).count();
+            std::chrono::duration point_duration =
+              std::chrono::seconds(
+                tp_hours_since_epoch.time_since_epoch() + microseconds_since_toh.minutes() +
+                microseconds_since_toh.seconds()) +
+              std::chrono::nanoseconds(microseconds_since_toh.subseconds());
 
-            //          if (std::sqrt(std::pow(point.x, 2) + std::pow(point.y, 2) +
-            //          std::pow(point.z, 2)) < 2.0) {
-            //            continue;
-            //          } else if (
-            //            std::sqrt(std::pow(point.x, 2) + std::pow(point.y, 2) + std::pow(point.z,
-            //            2)) > 60) { continue;
-            //          }
+            double integer_start;
+            double frac_start = std::modf(time_start_in_utc, &integer_start);
+            std::chrono::seconds time_filter_start_int(static_cast<long>(integer_start));
+            std::chrono::nanoseconds time_filter_start_frac(static_cast<long>(frac_start*1000000000));
+            std::chrono::duration time_filter_start = time_filter_start_int + time_filter_start_frac;
 
-            if (dist_m != 0 && ind_point != 0) {
+            double integer_end;
+            double frac_end = std::modf(time_end_in_utc, &integer_end);
+            std::chrono::seconds time_filter_end_int(static_cast<long>(integer_end));
+            std::chrono::nanoseconds time_filter_end_frac(static_cast<long>(frac_end*1000000000));
+            std::chrono::duration time_filter_end = time_filter_end_int + time_filter_end_frac;
+
+            if (dist_m != 0 && ind_point != 0 &&
+                time_filter_start.count() < point_duration.count() &&
+                point_duration.count() < time_filter_end.count()) {
               cloud_.push_back(point);
             }
           }

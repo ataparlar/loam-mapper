@@ -183,14 +183,14 @@ void TransformProvider::process(double origin_x, double origin_y, double origin_
       std::string mgrs_string;
       GeographicLib::MGRS::Forward(zone, northp, x, y, prec, mgrs_string);
 //      std::cout << mgrs_string << std::endl;
-//      std::vector coords = parse_mgrs_coordinates(mgrs_string);
-//      x = coords.at(0);
-//      y = coords.at(1);
-//      z = in.ellipsoid_height;
+      std::vector coords = parse_mgrs_coordinates(mgrs_string);
+      x = coords.at(0);
+      y = coords.at(1);
+      z = in.ellipsoid_height;
 
-      x = in.easting - origin_x;
-      y = in.northing - origin_y;
-      z = in.ellipsoid_height - origin_z;
+//      x = in.easting - origin_x;
+//      y = in.northing - origin_y;
+//      z = in.ellipsoid_height - origin_z;
 
       Pose pose;
       Imu imu;

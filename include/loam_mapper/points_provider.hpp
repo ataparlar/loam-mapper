@@ -21,7 +21,8 @@ public:
   using SharedPtr = std::shared_ptr<PointsProvider>;
   using ConstSharedPtr = const SharedPtr;
 
-  explicit PointsProvider( std::string  path_folder_pcaps);
+  explicit PointsProvider( std::string  path_folder_pcaps,
+                          double time_filter_start, double time_filter_end);
 
   void process() override;
 
@@ -40,6 +41,8 @@ public:
 
 private:
 
+  double time_filter_start_;
+  double time_filter_end_;
   fs::path path_folder_pcaps_;
 };
 }  // namespace loam_mapper::points_provider

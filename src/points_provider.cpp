@@ -37,12 +37,15 @@ namespace fs = boost::filesystem;
 using Point = PointsProviderBase::Point;
 using Points = PointsProviderBase::Points;
 
-PointsProvider::PointsProvider(std::string path_folder_pcaps)
+PointsProvider::PointsProvider(std::string path_folder_pcaps,
+                               double time_filter_start, double time_filter_end)
 : path_folder_pcaps_{path_folder_pcaps}
 {
   if (!fs::is_directory(path_folder_pcaps_)) {
     throw std::runtime_error(path_folder_pcaps_.string() + " is not a directory.");
   }
+  time_filter_start_ = time_filter_start;
+  time_filter_end_ = time_filter_end;
 }
 
 void PointsProvider::process()
@@ -96,7 +99,8 @@ void PointsProvider::process_pcap_into_clouds(
   pcpp::RawPacket rawPacket;
   while (reader->getNextPacket(rawPacket)) {
 //    std::cout << "test_points" << std::endl;
-    parser.process_packet_into_cloud(rawPacket, callback_cloud_surround_out);
+    parser.process_packet_into_cloud(rawPacket, callback_cloud_surround_out,
+                                 time_filter_start_, time_filter_end_);
   }
 
   reader->close();
