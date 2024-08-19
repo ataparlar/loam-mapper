@@ -271,8 +271,27 @@ void ContinuousPacketParserXt32::process_packet_into_cloud(
                 microseconds_since_toh.subseconds() + timing_offset_from_first_block_time +
                 timing_offset_from_first_firing_time)
                 .count();
+            std::chrono::duration point_duration =
+              std::chrono::seconds(
+                tp_hours_since_epoch.time_since_epoch() + microseconds_since_toh.minutes() +
+                microseconds_since_toh.seconds()) +
+              std::chrono::nanoseconds(microseconds_since_toh.subseconds());
 
-            if (dist_m != 0 /*&& ind_point != 0*/) {
+            double integer_start;
+            double frac_start = std::modf(time_start_in_utc, &integer_start);
+            std::chrono::seconds time_filter_start_int(static_cast<long>(integer_start));
+            std::chrono::nanoseconds time_filter_start_frac(static_cast<long>(frac_start*1000000000));
+            std::chrono::duration time_filter_start = time_filter_start_int + time_filter_start_frac;
+
+            double integer_end;
+            double frac_end = std::modf(time_end_in_utc, &integer_end);
+            std::chrono::seconds time_filter_end_int(static_cast<long>(integer_end));
+            std::chrono::nanoseconds time_filter_end_frac(static_cast<long>(frac_end*1000000000));
+            std::chrono::duration time_filter_end = time_filter_end_int + time_filter_end_frac;
+
+            if (dist_m != 0 && ind_point != 0 &&
+                time_filter_start.count() < point_duration.count() &&
+                point_duration.count() < time_filter_end.count()) {
               cloud_.push_back(point);
             }
           }
